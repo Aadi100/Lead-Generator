@@ -1,0 +1,162 @@
+{
+ "id": "redditBiz01",
+ "name": "Reddit - Business communities",
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "5,25,45 * * * *"
+      }
+     ]
+    }
+   },
+   "id": "node5",
+   "name": "Schedule",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    240,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "url": "https://www.reddit.com/r/shopify+startups+Entrepreneur+smallbusiness+SideProject+SaaS+ecommerce+nocode+web_design+graphic_design+logodesign+Wordpress+webflow+woocommerce/new/.rss?limit=100"
+   },
+   "id": "node6",
+   "name": "Reddit business subs",
+   "type": "n8n-nodes-base.rssFeedRead",
+   "typeVersion": 1,
+   "position": [
+    470,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "const MODE = 'business';\n// ===== Lead intelligence (identical copy lives in every workflow's Code node) =====\nconst TARGET = (() => {\n  try { const v = $('Load targeting').first().json.value; return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; }\n})();\nconst lowerList = (a, max) => (Array.isArray(a) ? a : []).map((s) => String(s || '').toLowerCase().replace(/\\s+/g, ' ').trim()).filter((s) => s.length >= 2 && s.length <= 60).slice(0, max);\nconst CUSTOM_WORDS = [...new Set([...lowerList(TARGET.keywords, 60), ...lowerList(TARGET.topics, 40)])];\nconst EXCLUDE_WORDS = lowerList(TARGET.exclude, 40);\nconst CATEGORY_WORDS = {\n  Website: ['website','websites','web site','web app','web application','webapp','landing page','wordpress','woocommerce','shopify','wix','webflow','squarespace','e-commerce','ecommerce','online store','web developer','web development','web design','web designer','front-end','frontend','front end','full-stack','full stack','fullstack','next.js','nextjs','reactjs','react.js','laravel','django','saas','cms','portfolio site','portfolio website','html','css'],\n  App: ['mobile app','mobile application','ios app','android app','iphone app','app developer','app development','flutter','react native','swiftui','kotlin','mvp','app store','play store','build an app','build me an app','develop an app','ios developer','android developer'],\n  Design: ['logo','logos','branding','brand identity','brand design','graphic design','graphic designer','ui/ux','ui ux','ux design','ui design','ux designer','ui designer','figma','photoshop','illustrator','canva','poster','flyer','brochure','packaging','infographic','banner','banners','social media graphics','social media design','thumbnail','thumbnails','pitch deck','presentation design','mockup','mockups','business card','label design','merch design','t-shirt design','book cover','cover design','brand guidelines','style guide','icon set'],\n  Automation: ['n8n','zapier','make.com','automation','automations','automate','chatbot','ai agent','ai agents','ai automation','api integration','web scraping','scraper','crm','workflow','openai','llm','discord bot','telegram bot'],\n};\nconst BUYER = ['looking for','looking to hire','looking for someone','in need of','need a','need an','need someone','need help','need to hire','want to hire','want someone','seeking','searching for','who can build','can anyone build','help me build','anyone who can','hire a','hire an','hiring a','hiring an','i need','we need','we are looking','i am looking',\"i'm looking\",'will pay','paying','budget','recommend a','hiring'];\nconst SELLER = ['[for hire]','[offer]','[offering]','[available]','for hire','hire me','available for','available now','open for work','open for commissions','commissions open','taking commissions','i will','i can','i do','i offer','i build','i design','my services','my portfolio','accepting clients','dm for rates','services offered'];\nconst DISPOSABLE = ['mailinator.com','guerrillamail.com','10minutemail.com','tempmail.com','yopmail.com','trashmail.com','sharklasers.com','getnada.com','dispostable.com','throwawaymail.com','maildrop.cc'];\n\nconst SEVERE = [\n  [/(registration|processing|application|training|security|starter)\\s+fee|you (must|need to|will need to) pay|refundable deposit|western union|moneygram/i, 'Asks the freelancer to pay money first'],\n  [/gift ?cards?|crypto ?wallet|bitcoin wallet|\\busdt\\b|investment opportunity|guaranteed (income|returns?|profit)|get rich|passive income/i, 'Investment / easy-money bait'],\n  [/(check|cheque) (will be|is) (sent|mailed)|deposit (the )?(check|cheque)|overpay|equipment (purchase|check)/i, 'Cheque / overpayment scam wording'],\n  [/\\bssn\\b|social security|passport (copy|scan)|bank (login|details|account number)|credit card number/i, 'Asks for sensitive personal or bank details'],\n];\nconst MEDIUM = [\n  [/\\b(unpaid|equity only|rev(enue)?[- ]?share only|profit[- ]?share only|sweat equity|for free|free of charge|no pay|spec work)\\b|\\b(for|in|as|paid in) exposure\\b|\\bexposure only\\b/i, 'Unpaid / exposure-only work'],\n  [/\\b(pay(ment)? (outside|off)|outside (of )?)(the )?(platform|upwork|fiverr|freelancer)\\b/i, 'Wants to work or pay outside the platform'],\n  [/\\b(bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|cutt\\.ly|rb\\.gy|shorturl\\.at|is\\.gd)\\//i, 'Contains a shortened link'],\n  [/no experience (needed|required)[\\s\\S]{0,200}(weekly pay|per (day|week))|(weekly pay|per (day|week))[\\s\\S]{0,200}no experience (needed|required)/i, '\"No experience\" + fixed pay wording (job-scam pattern)'],\n];\nconst MINOR = [\n  [/(\\burgent\\b|\\basap\\b|immediately|limited slots|today only)[\\s\\S]*!!|!!![\\s\\S]*(\\burgent\\b|\\basap\\b)/i, 'Pressure / urgency wording'],\n];\n\nconst esc = (s) => s.replace(/[.*+?^${}()|[\\]\\\\\\/]/g, '\\\\$&');\nconst mk = (list) => new RegExp('(?<![a-z0-9])(' + list.map(esc).join('|') + ')(?![a-z0-9])', 'gi');\nconst has = (re, s) => s.search(re) !== -1;\nif (CUSTOM_WORDS.length) CATEGORY_WORDS.Other = CUSTOM_WORDS;\nconst CAT_RE = Object.fromEntries(Object.entries(CATEGORY_WORDS).map(([k, v]) => [k, mk(v)]));\nconst EXCLUDE_RE = EXCLUDE_WORDS.length ? mk(EXCLUDE_WORDS) : null;\nconst CUSTOM_RE = CUSTOM_WORDS.length ? mk(CUSTOM_WORDS) : null;\nconst BUYER_RE = mk(BUYER);\nconst SELLER_RE = mk(SELLER);\nconst BUYER_TAG_RE = /\\[(hiring|task|commission|paid)\\]/i;\nconst ROLE_RE = /(developer|designer|freelanc|programmer|engineer|agency|expert|specialist|someone (to|who|that)|somebody (to|who)|anyone (who|that|to)|\\bdev\\b|coder|consultant)/i;\nconst FX = { '$': 1, usd: 1, '€': 1.08, eur: 1.08, '£': 1.27, gbp: 1.27, cad: 0.73, aud: 0.65, '₹': 0.012, inr: 0.012, pkr: 0.0036 };\nconst FREE_HOSTS = /(reddit\\.com|redd\\.it|imgur\\.com|giphy\\.com|discord\\.gg|youtube\\.com|youtu\\.be|wikipedia\\.org)/i;\n\nfunction decode(s) {\n  return s.replace(/&nbsp;|&#32;|&#160;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '\"')\n    .replace(/&#39;|&apos;/g, \"'\").replace(/&#x2F;/g, '/').replace(/&#(\\d+);/g, (m, n) => String.fromCharCode(+n))\n    .replace(/&#x([0-9a-f]+);/gi, (m, n) => String.fromCharCode(parseInt(n, 16))).replace(/&amp;/g, '&');\n}\nfunction stripHtml(h) {\n  if (!h) return '';\n  let t = String(h)\n    .replace(/<\\s*br\\s*\\/?>/gi, '\\n').replace(/<p>/gi, '\\n').replace(/<\\/(p|div|li|h\\d|tr|pre)>/gi, '\\n').replace(/<li[^>]*>/gi, '• ')\n    .replace(/<a [^>]*href=\"([^\"]+)\"[^>]*>([\\s\\S]*?)<\\/a>/gi, (m, href, txt) => {\n      const label = txt.replace(/<[^>]+>/g, '').trim();\n      return label && !href.includes(label) && label !== href ? `${label} (${href})` : href;\n    })\n    .replace(/<[^>]+>/g, '');\n  t = decode(t);\n  return t.replace(/[ \\t]+\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').replace(/[ \\t]{2,}/g, ' ').trim();\n}\n\nconst NOISE_RE = /\\b(closers?|setters?|sales (reps?|agents?)|appointment setting|cold call(er|ing)?|data entry|virtual assistant|transcription|survey|moderators?|chat support|customer support|telemarket\\w*|affiliate|network marketing|mlm|seo|link building|social media (marketing|management)|lead generation|copywriting|copywriter|content writ\\w+|translat\\w+|video editing|bookkeeping|accounting)\\b/i;\nconst CONTRACT_RE = /\\b(contract|contractor|freelance|freelancer|part[- ]time|project[- ]based|short[- ]term)\\b/i;\nfunction classify(title, body, extra) {\n  if (NOISE_RE.test(title) && !(CUSTOM_RE && has(CUSTOM_RE, title))) return { category: null, categories: [], tags: [] };\n  if (EXCLUDE_RE && has(EXCLUDE_RE, title + ' ' + body.slice(0, 1500))) return { category: null, categories: [], tags: [] };\n  const scores = {}; const tags = new Set();\n  for (const [cat, re] of Object.entries(CAT_RE)) {\n    let s = 0;\n    for (const m of title.matchAll(re)) { s += 3; tags.add(m[1].toLowerCase()); }\n    for (const m of body.matchAll(re)) { s += 1; tags.add(m[1].toLowerCase()); }\n    if (extra) for (const m of extra.matchAll(re)) { s += 1; tags.add(m[1].toLowerCase()); }\n    if (s) scores[cat] = s;\n  }\n  const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);\n  return { category: ranked.length ? ranked[0][0] : null, categories: ranked.map((e) => e[0]), tags: [...tags].slice(0, 8) };\n}\n\nconst SEEKER_RE = /\\b(looking for|searching for|seeking) (work|a job|jobs|clients|gigs|freelance (work|gigs|clients)|opportunit\\w+|projects|employment|a position|a role)\\b|\\b(tips|advice|feedback|critique|thoughts on|rate my|review my|career|salary|rant)\\b|\\bam i\\b|\\bhow to find (clients|work)\\b/i;\nfunction isSeller(title, body) {\n  const t = title.toLowerCase();\n  if (BUYER_TAG_RE.test(t)) return false;\n  if (has(SELLER_RE, t) || SEEKER_RE.test(t)) return true;\n  const head = body.slice(0, 250);\n  if (/\\bi['’]?m an? [a-z\\- ]{0,40}(developer|designer|freelancer|engineer|agency)\\b/i.test(head)) return true;\n  if (/\\bwe are an? (web |design |software |creative )?(agency|studio|company|team)\\b/i.test(head)) return true;\n  return false;\n}\nconst NEED_RE = /\\bneed(ed)? (an? |some |to hire )?(\\w+ ){0,2}(developer|designer|programmer|freelancer|website|app|logo)\\b|\\b(developer|designer|programmer|freelancer) wanted\\b/i;\nfunction hasBuyerIntent(title, body) {\n  if (BUYER_TAG_RE.test(title)) return true;\n  const t = title + ' ' + body.slice(0, 700);\n  return has(BUYER_RE, t) || NEED_RE.test(t);\n}\n\nfunction num(n, k) { let v = parseFloat(n); if (k) v *= 1000; return v; }\nfunction extractBudget(text) {\n  const t = text.replace(/(\\d),(\\d{3})/g, '$1$2');\n  const found = [];\n  const re1 = /(\\$|€|£|₹|\\b(?:usd|eur|gbp|cad|aud|inr|pkr))\\s?(\\d+(?:\\.\\d+)?)\\s?(k\\b)?(?:\\s?(?:-|–|—|to)\\s?(?:\\$|€|£|₹)?\\s?(\\d+(?:\\.\\d+)?)\\s?(k\\b)?)?(\\s?(?:\\/|per|an?)\\s?(?:hr|hour))?/gi;\n  for (const m of t.matchAll(re1)) {\n    const lo = num(m[2], m[3]); const hi = m[4] ? num(m[4], m[5] || m[3]) : null;\n    if (!(lo >= 1)) continue;\n    found.push({ idx: m.index, cur: m[1], lo, hi, hourly: !!m[6], fx: FX[m[1].toLowerCase()] ?? 1 });\n  }\n  const re2 = /(\\d+(?:\\.\\d+)?)\\s?(k\\b)?\\s?(usd|eur|gbp|cad|aud|inr|pkr|dollars|bucks)\\b/gi;\n  for (const m of t.matchAll(re2)) {\n    const c = m[3].toLowerCase(); const lo = num(m[1], m[2]);\n    if (!(lo >= 1)) continue;\n    found.push({ idx: m.index, cur: c === 'dollars' || c === 'bucks' ? '$' : m[3].toUpperCase(), lo, hi: null, hourly: false, fx: FX[c] ?? 1 });\n  }\n  if (!found.length) return null;\n  const pick = found.find((f) => /budget|pay|paying|offer|rate/i.test(t.slice(Math.max(0, f.idx - 40), f.idx))) || found[0];\n  const sym = ['$', '€', '£', '₹'].includes(pick.cur) ? pick.cur : pick.cur.toUpperCase() + ' ';\n  const label = pick.hi ? `${sym}${pick.lo}–${sym}${pick.hi}` : `${sym}${pick.lo}`;\n  return { text: label + (pick.hourly ? '/hr' : ''), amount: Math.round((pick.hi || pick.lo) * pick.fx), hourly: pick.hourly };\n}\n\nfunction extractContacts(text) {\n  const out = [];\n  const emails = [...new Set(text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}/g) || [])]\n    .filter((e) => !/\\.(png|jpe?g|gif|webp)$/i.test(e)).slice(0, 3);\n  emails.forEach((e) => out.push('email: ' + e));\n  const tg = text.match(/(?:t\\.me\\/|telegram[^\\n@:]{0,12}[:@]\\s*@?)([A-Za-z0-9_]{4,32})/i);\n  if (tg) out.push('telegram: @' + tg[1]);\n  const wa = text.match(/whats\\s?app[^\\n\\d+]{0,15}(\\+?\\d[\\d\\s().-]{7,16}\\d)/i);\n  if (wa) out.push('whatsapp: ' + wa[1].trim());\n  const dc = text.match(/discord[^\\n:]{0,10}:\\s*@?([A-Za-z0-9_.]{3,32}(?:#\\d{4})?)/i);\n  if (dc) out.push('discord: ' + dc[1]);\n  const urls = [...new Set((text.match(/https?:\\/\\/[^\\s)<>\\]\"']+/g) || []).map((u) => u.replace(/[.,;]+$/, '')))]\n    .filter((u) => !FREE_HOSTS.test(u)).slice(0, 2);\n  urls.forEach((u) => out.push('site: ' + u.replace(/^https?:\\/\\//, '').slice(0, 80)));\n  return out;\n}\n\nfunction assess(c, ctx) {\n  const flags = []; let severe = 0, medium = 0, minor = 0;\n  const add = (sev, label) => {\n    if (flags.includes(label)) return; flags.push(label);\n    if (sev === 'severe') severe++; else if (sev === 'medium') medium++; else minor++;\n  };\n  const text = c.text;\n  for (const [re, label] of SEVERE) if (re.test(text)) add('severe', label);\n  for (const [re, label] of MEDIUM) if (re.test(text)) add('medium', label);\n  for (const [re, label] of MINOR) if (re.test(text)) add('minor', label);\n\n  const emails = c.contacts.filter((x) => x.startsWith('email:')).map((x) => x.slice(7).toLowerCase());\n  const hasSite = c.contacts.some((x) => x.startsWith('site:'));\n  if (emails.some((e) => DISPOSABLE.includes(e.split('@')[1]))) add('medium', 'Disposable email address');\n  if (/(telegram|whatsapp|signal)/i.test(text) && !emails.length && !hasSite) add('minor', 'Asks to continue on Telegram/WhatsApp only');\n  if (/(dm me|pm me|message me|inbox me)/i.test(text) && c.body.length < 120 && !c.budget && c.source !== 'Web Form') add('medium', 'No details given, \"DM me\" only');\n\n  const letters = c.title.replace(/[^A-Za-z]/g, '');\n  if (letters.length > 15 && letters.replace(/[^A-Z]/g, '').length / letters.length > 0.6) add('minor', 'Title is mostly ALL CAPS');\n  if (c.source !== 'Web Form' && c.body.length < 80 && !ctx.snippetOnly) add('minor', 'Very little detail in the post');\n  if (ctx.snippetOnly) add('minor', 'Only a short preview is available: open the post to confirm details');\n  if (/^\\/?u?\\/?\\[deleted\\]$/i.test(c.author || '')) add('medium', 'Author account was deleted');\n\n  if (c.budget && c.budget.amount != null) {\n    if (!c.budget.hourly) {\n      if (c.budget.amount < 15) add('medium', 'Budget is extremely low for this kind of work');\n      else if (c.budget.amount > 200000) add('medium', 'Budget looks unrealistically high');\n    } else if (c.budget.amount < 5) add('minor', 'Hourly rate is very low');\n  }\n  if (c.author && ctx.authorCounts && ctx.authorCounts[c.author] >= 3) add('medium', `Same author posted ${ctx.authorCounts[c.author]} leads in one batch (possible spam)`);\n  for (const f of ctx.extraFlags || []) add(f.sev, f.label);\n\n  let score = 50;\n  if (c.contacts.length) score += 8;\n  if (emails.length || hasSite) score += 6;\n  if (c.budget) { score += 10; if (c.budget.hourly || (c.budget.amount >= 15 && c.budget.amount <= 100000)) score += 4; }\n  if (c.body.length >= 1000) score += 12; else if (c.body.length >= 400) score += 8; else if (c.body.length < 120) score -= 6;\n  if (c.category) score += 6;\n  if (/\\b(deadline|within \\d+|\\d+\\s?(days?|weeks?|months?)|timeline|launch)\\b/i.test(text)) score += 4;\n  score += ctx.bonus || 0;\n  score -= Math.min(severe, 2) * 35 + medium * 14 + minor * 6;\n  score = Math.max(5, Math.min(98, Math.round(score)));\n  const level = score >= 70 ? 'High' : score >= 45 ? 'Medium' : 'Low';\n  return { score, level, suspicious: severe > 0 || medium >= 2 || score < 35, flags };\n}\n\nfunction buildLead(o) {\n  const title = (o.title || '').replace(/\\s+/g, ' ').trim().slice(0, 300);\n  const body = (o.body || '').trim();\n  const text = title + '\\n' + body;\n  const cls = classify(title, body, o.classifyExtra);\n  const budget = o.budget !== undefined ? o.budget : extractBudget(text);\n  const contacts = [...new Set((o.contacts || []).concat(extractContacts(text)))];\n  const ctx = o.ctx || {};\n  const a = assess({ title, body, text, contacts, budget, category: cls.category, source: o.source, author: o.author }, ctx);\n  return {\n    title,\n    description: (body || title).slice(0, 4000),\n    url: o.url,\n    budget: budget ? budget.text : 'TBD',\n    budget_amount: budget ? budget.amount : null,\n    source: o.source,\n    source_detail: o.sourceDetail || null,\n    type: o.type || 'Outbound',\n    status: 'New',\n    category: cls.category,\n    categories: JSON.stringify(cls.categories),\n    tags: JSON.stringify(o.extraTags ? [...new Set([...cls.tags, ...o.extraTags])].slice(0, 8) : cls.tags),\n    author: o.author || null,\n    author_info: o.authorInfo || null,\n    contact: contacts.join(' · ') || null,\n    posted_at: o.postedAt || null,\n    trust_score: a.score,\n    trust_level: a.level,\n    is_suspicious: a.suspicious,\n    flags: JSON.stringify(a.flags),\n  };\n}\n// ===== end shared =====\n\n// MODE is set above: 'jobs' (hiring boards) or 'business' (general business subs, stricter)\nconst DEFAULT_BUYER_SUBS = ['designjobs', 'hiring'];\nconst rows = [];\nfor (const it of $input.all()) {\n  const f = it.json;\n  const link = f.link || '';\n  if (!/^https?:\\/\\//.test(link)) continue;\n  const m = link.match(/\\/r\\/([^\\/]+)\\/comments/);\n  const sub = m ? m[1] : (Array.isArray(f.categories) && f.categories[0]) || '';\n  const md = (f.content || '').match(/<div class=\"md\">([\\s\\S]*?)<\\/div>\\s*(?:<!--|$)/);\n  rows.push({\n    link, sub,\n    title: (f.title || '').trim(),\n    body: md ? stripHtml(md[1]) : '',\n    author: String(f.author || f.creator || '').replace(/^\\/?u\\//, '').trim(),\n    posted: f.isoDate || (f.pubDate ? new Date(f.pubDate).toISOString() : null),\n  });\n}\nconst authorCounts = {};\nfor (const r of rows) if (r.author) authorCounts[r.author] = (authorCounts[r.author] || 0) + 1;\n\nconst out = [];\nfor (const r of rows) {\n  if (!r.title || isSeller(r.title, r.body)) continue;\n  if (!classify(r.title, r.body).category) continue;\n  if (MODE === 'jobs') {\n    if (!hasBuyerIntent(r.title, r.body) && !DEFAULT_BUYER_SUBS.includes(r.sub.toLowerCase())) continue;\n  } else {\n    if (!hasBuyerIntent(r.title, r.body) || !ROLE_RE.test(r.title + ' ' + r.body.slice(0, 700))) continue;\n  }\n  const lead = buildLead({\n    title: r.title, body: r.body, url: r.link, source: 'Reddit', sourceDetail: 'r/' + r.sub,\n    author: r.author ? 'u/' + r.author : null, postedAt: r.posted, ctx: { authorCounts: Object.fromEntries(Object.entries(authorCounts).map(([k, v]) => ['u/' + k, v])) },\n  });\n  const dm = r.author ? 'reddit: u/' + r.author : null;\n  lead.contact = [dm, lead.contact].filter(Boolean).join(' · ') || null;\n  out.push({ json: lead });\n}\nreturn out;\n"
+   },
+   "id": "node7",
+   "name": "Find and score buyers",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    700,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "insert",
+    "schema": {
+     "__rl": true,
+     "value": "public",
+     "mode": "list"
+    },
+    "table": {
+     "__rl": true,
+     "value": "leads",
+     "mode": "list"
+    },
+    "columns": {
+     "mappingMode": "autoMapInputData",
+     "value": {},
+     "matchingColumns": [],
+     "schema": []
+    },
+    "options": {
+     "skipOnConflict": true
+    }
+   },
+   "id": "node8",
+   "name": "Save to Supabase",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.5,
+   "position": [
+    930,
+    300
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "supabase-cred",
+     "name": "Supabase Leads DB"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "SELECT COALESCE((SELECT value FROM app_settings WHERE key = 'targeting'), '{}'::jsonb) AS value",
+    "options": {}
+   },
+   "id": "node75",
+   "name": "Load targeting",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.5,
+   "position": [
+    240,
+    470
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "supabase-cred",
+     "name": "Supabase Leads DB"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Schedule": {
+   "main": [
+    [
+     {
+      "node": "Load targeting",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Reddit business subs": {
+   "main": [
+    [
+     {
+      "node": "Find and score buyers",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Find and score buyers": {
+   "main": [
+    [
+     {
+      "node": "Save to Supabase",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Load targeting": {
+   "main": [
+    [
+     {
+      "node": "Reddit business subs",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "active": false,
+ "settings": {
+  "executionOrder": "v1",
+  "errorWorkflow": "errorAlerts01"
+ }
+}

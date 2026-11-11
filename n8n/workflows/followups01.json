@@ -1,0 +1,65 @@
+{
+ "id": "followups01",
+ "name": "Reminders - Follow up and keep moving",
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "15 * * * *"
+      }
+     ]
+    }
+   },
+   "id": "node69",
+   "name": "Schedule",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    240,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "WITH a AS (\n  INSERT INTO tasks (lead_id, title, notes, due_at, priority)\n  SELECT l.id, 'Follow up: ' || left(l.title, 80), 'Pitched ' || to_char(l.pitched_at, 'Mon DD') || ' with no reply yet.', now(), 'normal'\n  FROM leads l\n  WHERE l.status = 'Pitched' AND l.pitched_at < now() - interval '3 days' AND l.replied_at IS NULL\n    AND NOT EXISTS (SELECT 1 FROM tasks t WHERE t.lead_id = l.id AND t.title LIKE 'Follow up:%')\n    AND NOT EXISTS (SELECT 1 FROM outreach o WHERE o.lead_id = l.id AND o.status IN ('queued', 'scheduled', 'sending'))\n  RETURNING id\n), b AS (\n  INSERT INTO tasks (lead_id, title, notes, due_at, priority)\n  SELECT l.id, 'Keep it moving: ' || left(l.title, 80), 'They replied ' || to_char(l.replied_at, 'Mon DD') || ' and nothing has happened since.', now(), 'high'\n  FROM leads l\n  WHERE l.status = 'Replied' AND l.replied_at < now() - interval '2 days'\n    AND NOT EXISTS (SELECT 1 FROM tasks t WHERE t.lead_id = l.id AND t.title LIKE 'Keep it moving:%')\n  RETURNING id\n)\nSELECT (SELECT count(*) FROM a)::int AS follow_ups, (SELECT count(*) FROM b)::int AS keep_moving",
+    "options": {}
+   },
+   "id": "node70",
+   "name": "Create reminder tasks",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.5,
+   "position": [
+    470,
+    300
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "supabase-cred",
+     "name": "Supabase Leads DB"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Schedule": {
+   "main": [
+    [
+     {
+      "node": "Create reminder tasks",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "active": false,
+ "settings": {
+  "executionOrder": "v1",
+  "errorWorkflow": "errorAlerts01"
+ }
+}

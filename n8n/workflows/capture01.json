@@ -1,0 +1,90 @@
+{
+ "id": "capture01",
+ "name": "Capture - Send anything to Lead Radar",
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "capture",
+    "responseMode": "onReceived",
+    "options": {
+     "allowedOrigins": "*"
+    }
+   },
+   "id": "node71",
+   "name": "Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    240,
+    300
+   ],
+   "webhookId": "capture-webhook"
+  },
+  {
+   "parameters": {
+    "jsCode": "const b = ($input.first().json || {}).body || $input.first().json || {};\nlet items = Array.isArray(b.items) ? b.items : (typeof b.text === 'string' ? [{ text: b.text, url: b.url, title: b.title, author: b.author, site: b.site }] : []);\nitems = items.filter((i) => i && typeof i.text === 'string' && i.text.trim().length > 10).slice(0, 80).map((i) => ({\n  text: i.text.slice(0, 1500),\n  url: typeof i.url === 'string' ? i.url.slice(0, 500) : undefined,\n  title: typeof i.title === 'string' ? i.title.slice(0, 200) : undefined,\n  author: typeof i.author === 'string' ? i.author.slice(0, 120) : undefined,\n  site: typeof i.site === 'string' ? i.site.slice(0, 120) : undefined,\n}));\nif (!items.length) return [];\nconst kind = b.kind === 'trade' ? 'trade' : b.kind === 'request' || b.kind === 'service' ? 'request' : null;\nreturn [{ json: { payload: { items, source_label: typeof b.source === 'string' ? b.source.slice(0, 60) : 'Webhook', force_kind: kind } } }];"
+   },
+   "id": "node72",
+   "name": "Build the job",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    470,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "INSERT INTO jobs (type, payload) VALUES ('quick_add', $1::jsonb) RETURNING id",
+    "options": {
+     "queryReplacement": "={{ JSON.stringify($json.payload) }}"
+    }
+   },
+   "id": "node73",
+   "name": "Queue it for the worker",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.5,
+   "position": [
+    700,
+    300
+   ],
+   "credentials": {
+    "postgres": {
+     "id": "supabase-cred",
+     "name": "Supabase Leads DB"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Build the job",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build the job": {
+   "main": [
+    [
+     {
+      "node": "Queue it for the worker",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "active": false,
+ "settings": {
+  "executionOrder": "v1",
+  "errorWorkflow": "errorAlerts01"
+ }
+}

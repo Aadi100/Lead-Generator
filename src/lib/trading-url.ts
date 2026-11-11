@@ -1,0 +1,25 @@
+"use client";
+
+import { useCallback } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+
+/** Query-string state for a page. set() merges a patch; empty strings and nulls remove the key. */
+export function useUrlParams() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const get = useCallback((key: string, fallback = '') => params.get(key) ?? fallback, [params]);
+  const set = useCallback(
+    (patch: Record<string, string | null | undefined>) => {
+      const next = new URLSearchParams(params.toString());
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === null || v === undefined || v === '') next.delete(k);
+        else next.set(k, v);
+      }
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [params, router, pathname],
+  );
+  return { get, set, params };
+}
