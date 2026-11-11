@@ -1,4 +1,5 @@
 import { buildGameIndex, sameGame } from './trade-games.mjs';
+import { matchStock } from './stock-match.mjs';
 
 const lower = (v) => String(v || '').toLowerCase();
 const arr = (v) => (Array.isArray(v) ? v : []);
@@ -6,8 +7,14 @@ const normItem = (v) => lower(v).replace(/[^a-z]/g, '');
 const numOrNull = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
 
 // Which of the user's entries does this trade lead satisfy? buyer leads match "what I sell", seller leads match "what I want".
-export function matchTrade(lead, trading = {}, gameIndex) {
+// stock (optional) = { any: bool, items: stock rows, rates }. When stock rows exist, buyer leads match only stock that is in_stock;
+// with no stock rows at all the catalog behaviour below is used unchanged.
+export function matchTrade(lead, trading = {}, gameIndex, stock) {
   if (!lead || (lead.trade_side !== 'buyer' && lead.trade_side !== 'seller')) return null;
+  if (stock && stock.any && lead.trade_side === 'buyer') {
+    const best = matchStock(lead, stock.items, { rates: stock.rates, gameIndex })[0];
+    return best ? { stock: best.item, entry: null, label: `Buyer for your stock: ${best.item.title}` } : null;
+  }
   const entries = arr(lead.trade_side === 'buyer' ? trading.i_sell : trading.i_want);
   if (!entries.length) return null;
   const index = gameIndex || buildGameIndex(entries.map((e) => e.game));

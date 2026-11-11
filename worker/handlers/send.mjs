@@ -3,6 +3,7 @@ import { log } from '../lib/log.mjs';
 import { getSetting } from '../lib/settings.mjs';
 import { sendMail } from '../lib/mailer.mjs';
 import { evaluateOutreach, blockers, describeBlockers } from '../lib/safety.mjs';
+import { pushEvent } from '../lib/push.mjs';
 import {
   DEFAULT_SENDING, readSendingFresh, startOfLocalDay, dueDates, followUpSubject, messageIdFor, composeBody, followupEligibility,
 } from '../lib/safety-send.mjs';
@@ -36,7 +37,8 @@ async function sendOne(row, sending, now) {
     return { sent: false };
   }
 
-  if (row.step > 1) {
+  // Answers to a reply (reply_to_id) are not part of the follow-up sequence: no waiting on earlier steps.
+  if (row.step > 1 && !row.reply_to_id) {
     const prev = (rows || []).find((r) => r.step === row.step - 1);
     const el = followupEligibility({ row, prev, lead, now });
     if (el.action === 'cancel') {
@@ -57,7 +59,7 @@ async function sendOne(row, sending, now) {
   if (block.length) {
     const hard = block.some((w) => w.level === 'hard');
     await setRow(row.id, 'sending', {
-      status: row.step > 1 && hard ? 'cancelled' : 'draft', warnings, error: `Held: ${describeBlockers(block)}`,
+      status: row.step > 1 && !row.reply_to_id && hard ? 'cancelled' : 'draft', warnings, error: `Held: ${describeBlockers(block)}`,
     });
     log('send', `held ${row.id.slice(0, 8)}: ${describeBlockers(block)}`);
     return { sent: false };
@@ -71,8 +73,15 @@ async function sendOne(row, sending, now) {
   }
 
   const step1 = (rows || []).find((r) => r.step === 1);
-  const subject = row.step > 1 ? followUpSubject(step1?.subject || row.subject) : claimed.subject;
-  const headers = row.step > 1 && step1?.message_id ? { 'In-Reply-To': step1.message_id, References: step1.message_id } : undefined;
+  let replyToMessageId = null;
+  if (row.reply_to_id) {
+    const { data: rep } = await sb.from('replies').select('message_id').eq('id', row.reply_to_id).maybeSingle();
+    replyToMessageId = rep?.message_id && !/^(noid|bounce):/.test(rep.message_id) ? rep.message_id : null;
+  }
+  const isFollowup = row.step > 1 && !row.reply_to_id;
+  const subject = isFollowup ? followUpSubject(step1?.subject || row.subject) : claimed.subject;
+  const threadId = row.reply_to_id ? replyToMessageId : isFollowup ? step1?.message_id : null;
+  const headers = threadId ? { 'In-Reply-To': threadId, References: threadId } : undefined;
   try {
     const res = await sendMail({
       to: claimed.to_email, subject, text: composeBody(claimed.body, fresh.footer), headers,
@@ -81,6 +90,7 @@ async function sendOne(row, sending, now) {
     lastSendAt = Date.now();
     const sentAt = nowIso();
     const done = await setRow(row.id, 'sending', { status: 'sent', sent_at: sentAt, message_id: res.messageId, provider: res.provider, error: null, warnings });
+    if (row.reply_to_id) await sb.from('replies').update({ handled: true }).eq('id', row.reply_to_id);
     if (!done) log('send', `WARNING: ${row.id} was sent but the row could not be marked sent. Check your Sent folder.`);
     log('send', `sent step ${row.step} to ${claimed.to_email} via ${res.provider}`);
 
@@ -106,6 +116,7 @@ async function sendOne(row, sending, now) {
   } catch (e) {
     await setRow(row.id, 'sending', { status: 'failed', error: String(e.message || e).slice(0, 400), warnings });
     log('send', `FAILED ${row.id.slice(0, 8)}: ${e.message}`);
+    pushEvent('send_failed', { title: 'Email failed to send', body: String(e.message || e).slice(0, 80), url: '/outbox', tag: `send-${row.id}` });
     return { sent: false };
   }
 }

@@ -17,10 +17,10 @@ function tagsOf(lead) {
   return arr(t).map(lower);
 }
 
-function computeTradeFit(lead, trading) {
+function computeTradeFit(lead, trading, stock) {
   const reasons = [];
   let score = (lead.trust_score ?? 50) * 0.5;
-  const match = matchTrade(lead, trading);
+  const match = matchTrade(lead, trading, undefined, stock);
   if (match) {
     score += 25;
     reasons.push(match.label);
@@ -33,8 +33,8 @@ function computeTradeFit(lead, trading) {
   return { score: clamp(Math.round(score), 1, 99), reasons: reasons.slice(0, 6), trade_match: match ? match.label : null };
 }
 
-export function computeFit(lead, { profile = {}, summary = {}, filterLearning = {}, targeting = {}, trading = {} } = {}) {
-  if (lead.lead_kind === 'trade') return computeTradeFit(lead, trading);
+export function computeFit(lead, { profile = {}, summary = {}, filterLearning = {}, targeting = {}, trading = {}, stock } = {}) {
+  if (lead.lead_kind === 'trade') return computeTradeFit(lead, trading, stock);
   const reasons = [];
   const isProspect = lead.lead_kind === 'prospect';
   let score = isProspect ? 40 : (lead.trust_score ?? 50) * 0.5;

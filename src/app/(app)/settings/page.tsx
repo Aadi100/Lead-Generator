@@ -17,7 +17,8 @@ import WritingTab from '@/components/settings/WritingTab';
 import SafetyTab from '@/components/settings/SafetyTab';
 import AppearanceTab from '@/components/settings/AppearanceTab';
 import DataTab from '@/components/settings/DataTab';
-import TradingPointer from '@/components/settings/TradingPointer';
+import ProposalsTab from '@/components/settings/ProposalsTab';
+import TradingPointer, { StockPointer } from '@/components/settings/TradingPointer';
 import { HealthChip, useHealth } from '@/components/settings/StatusChip';
 
 function Panel({ tab }: { tab: SettingsTabId }) {
@@ -41,7 +42,14 @@ function Panel({ tab }: { tab: SettingsTabId }) {
     case 'prospecting':
       return <ProspectingTab />;
     case 'trading':
-      return <TradingPointer />;
+      return (
+        <div className="space-y-4">
+          <TradingPointer />
+          <StockPointer />
+        </div>
+      );
+    case 'proposals':
+      return <ProposalsTab />;
     case 'appearance':
       return <AppearanceTab />;
     case 'data':

@@ -1,5 +1,7 @@
 import type { Lead, Status } from '@/lib/types';
 import { Badge, cx } from '@/components/ui';
+import { chipLabel, type AlsoSeenChip } from '@/lib/lead-identity';
+import { learnedShare } from '@/lib/rank';
 
 export const STATUS_DOT: Record<Status, string> = {
   New: 'bg-info',
@@ -25,7 +27,8 @@ export function fitTone(score: number): 'primary' | 'info' | 'neutral' {
 /** Match score chip. Reasons are in the tooltip and, for screen readers, in the label. */
 export function FitBadge({ lead, className }: { lead: Lead; className?: string }) {
   if (lead.fit_score === null) return null;
-  const why = lead.fit_reasons.length > 0 ? lead.fit_reasons.join('. ') : 'How well this lead matches what you offer';
+  const base = lead.fit_reasons.length > 0 ? lead.fit_reasons.join('. ') : 'How well this lead matches what you offer';
+  const why = lead.learned_score !== null && learnedShare(lead) > 0 ? `${base}. Learned from your results: ${lead.learned_score} out of 100` : base;
   return (
     <Badge tone={fitTone(lead.fit_score)} title={why} className={className}>
       <span className="sr-only">Match score </span>
@@ -36,4 +39,17 @@ export function FitBadge({ lead, className }: { lead: Lead; className?: string }
 
 export function SectionTitle({ children, className }: { children: React.ReactNode; className?: string }) {
   return <h3 className={cx('text-xs font-semibold uppercase tracking-wider text-fg-subtle', className)}>{children}</h3>;
+}
+
+/** Small chip when the same person or ad was found on other sources. Nothing is hidden: it is a hint. */
+export function AlsoSeenBadge({ chip, className }: { chip: AlsoSeenChip; className?: string }) {
+  const title =
+    chip.count > 0
+      ? `The same ${chip.sources > 0 ? 'person or ad' : 'ad'} was found ${chip.count} other time${chip.count === 1 ? '' : 's'}. Open the lead to see where.`
+      : 'This looks like another lead you have. Open it to confirm or split.';
+  return (
+    <Badge tone={chip.count > 0 ? 'info' : 'neutral'} title={title} className={className}>
+      {chipLabel(chip)}
+    </Badge>
+  );
 }

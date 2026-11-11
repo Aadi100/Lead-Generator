@@ -37,7 +37,7 @@ export async function draftForLead(leadId, { instruction } = {}) {
   ]);
   const sending = { ...DEFAULT_SENDING, ...sendingRaw };
   const { data: rows } = await sb.from('outreach').select('*').eq('lead_id', leadId).order('step');
-  const existing = rows || [];
+  const existing = (rows || []).filter((r) => !r.reply_to_id); // answers to replies are not part of the sequence
   if (existing.some((r) => r.step === 1 && LOCKED_STATUSES.includes(r.status))) {
     return { ok: false, error: 'The first message is already queued or sent, so it cannot be redrafted.' };
   }

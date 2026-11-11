@@ -9,6 +9,7 @@ import {
   type Status,
   type TrustLevel,
 } from './types';
+import type { LearnedReason } from './types-intel';
 
 export function str(v: unknown): string | null {
   return typeof v === 'string' && v.trim() !== '' ? v : null;
@@ -97,6 +98,20 @@ function signals(v: unknown): SiteSignals {
   return out;
 }
 
+function learnedReasons(v: unknown): LearnedReason[] {
+  const parsed = parseJson(v);
+  if (!Array.isArray(parsed)) return [];
+  const out: LearnedReason[] = [];
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object') continue;
+    const o = item as Record<string, unknown>;
+    const text = str(o.text);
+    if (!text) continue;
+    out.push({ text, effect: o.effect === 'down' ? 'down' : 'up', n: num(o.n) ?? 0, label: str(o.label) ?? '' });
+  }
+  return out;
+}
+
 export function normalizeLead(raw: Record<string, unknown>): Lead {
   const rawStatus = raw.status === 'Closed' ? 'Won' : raw.status;
   const status = STATUSES.includes(rawStatus as Status) ? (rawStatus as Status) : 'New';
@@ -158,6 +173,15 @@ export function normalizeLead(raw: Record<string, unknown>): Lead {
     game: str(raw.game),
     item_type: str(raw.item_type),
     trade_match: str(raw.trade_match),
+    price_verdict: raw.price_verdict === 'below' || raw.price_verdict === 'fair' || raw.price_verdict === 'above' ? raw.price_verdict : null,
+    price_pct: num(raw.price_pct),
+    market_median: num(raw.market_median),
+    market_samples: num(raw.market_samples),
+    market_basis: raw.market_basis === 'sold' || raw.market_basis === 'asking' ? raw.market_basis : null,
+    stock_item_id: str(raw.stock_item_id),
+    learned_score: num(raw.learned_score) === null ? null : Math.max(0, Math.min(100, Math.round(num(raw.learned_score) as number))),
+    learned_reasons: learnedReasons(raw.learned_reasons),
+    learned_weight: num(raw.learned_weight),
   };
 }
 

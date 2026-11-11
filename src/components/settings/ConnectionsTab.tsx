@@ -12,7 +12,7 @@ import SecretInput from './SecretInput';
 import { ResultChip } from './StatusChip';
 import Link from 'next/link';
 
-const OWNED: (keyof IntegrationsSettings)[] = ['serper', 'x', 'reddit_api', 'discord', 'upwork_inbox'];
+const OWNED: (keyof IntegrationsSettings)[] = ['serper', 'x', 'reddit_api', 'discord', 'upwork_inbox', 'producthunt'];
 
 type Chip = { label: string; tone: string; title?: string };
 
@@ -202,6 +202,9 @@ export default function ConnectionsTab() {
               <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:flex-wrap sm:gap-x-6">
                 <Toggle id="cn-serper-svc" checked={c.serper.services} onChange={(v) => form.patch({ serper: { ...c.serper, services: v } })} label="Look for web, app and design work" />
                 <Toggle id="cn-serper-trd" checked={c.serper.trading} onChange={(v) => form.patch({ serper: { ...c.serper, trading: v } })} label="Look for game trading posts" />
+                <Toggle id="cn-serper-ih" checked={c.serper.indiehackers} onChange={(v) => form.patch({ serper: { ...c.serper, indiehackers: v } })} label="Indie Hackers posts" />
+                <Toggle id="cn-serper-li" checked={c.serper.linkedin} onChange={(v) => form.patch({ serper: { ...c.serper, linkedin: v } })} label="LinkedIn job and contract posts" />
+                <Toggle id="cn-serper-fv" checked={c.serper.fiverr} onChange={(v) => form.patch({ serper: { ...c.serper, fiverr: v } })} label="Fiverr-style freelancer requests" />
               </div>
             </Section>
 
@@ -288,6 +291,34 @@ export default function ConnectionsTab() {
                   autoComplete="off"
                   value={c.discord.bot_token}
                   onChange={(e) => form.patch({ discord: { ...c.discord, bot_token: e.target.value.trim() } })}
+                />
+              </Field>
+            </Section>
+
+            <Section
+              id="cn-ph"
+              name="producthunt"
+              title="Product Hunt"
+              what="Finds new product launches whose makers might want a better website, app or design. These are outbound prospects: they did not ask for help. Works without a key from the public launch feed. A token adds a check of each product's website."
+              enabled={c.producthunt.enabled}
+              onToggle={(v) => form.patch({ producthunt: { ...c.producthunt, enabled: v } })}
+              hasKey={c.producthunt.token.trim() !== ''}
+              keyWord="Optional token"
+              status={st.producthunt}
+              steps={[
+                'Go to producthunt.com/v2/oauth/applications and sign in.',
+                'Add an application (any name, redirect URL https://localhost).',
+                'Press Create Token under Developer Token and copy it.',
+                'Paste it here and press Test connection. Leave it empty to keep using the public feed.',
+              ]}
+              {...common}
+            >
+              <Field label="Developer token (optional)" htmlFor="cn-ph-token">
+                <SecretInput
+                  id="cn-ph-token"
+                  autoComplete="off"
+                  value={c.producthunt.token}
+                  onChange={(e) => form.patch({ producthunt: { ...c.producthunt, token: e.target.value.trim().replace(/^Bearer\s+/i, '') } })}
                 />
               </Field>
             </Section>

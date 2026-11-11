@@ -1,3 +1,4 @@
+import type { AssistStatus, LearnedReason, ReplyAssist } from './types-intel';
 export const CATEGORIES = ['Website', 'App', 'Design', 'Automation', 'Other'] as const;
 export type Category = (typeof CATEGORIES)[number];
 
@@ -79,6 +80,15 @@ export type Lead = {
   game: string | null;
   item_type: string | null;
   trade_match: string | null;
+  price_verdict: 'below' | 'fair' | 'above' | null;
+  price_pct: number | null;
+  market_median: number | null;
+  market_samples: number | null;
+  market_basis: 'sold' | 'asking' | null;
+  stock_item_id: string | null;
+  learned_score: number | null;
+  learned_reasons: LearnedReason[];
+  learned_weight: number | null;
 };
 
 export type StatusTab = 'All' | Status;
@@ -137,6 +147,8 @@ export type OutreachRow = {
   override_warnings: boolean;
   rating: 'good' | 'bad' | null;
   feedback_note: string | null;
+  /** Set when this row answers a reply (step 10 and up). It is not part of the cold sequence. */
+  reply_to_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -156,6 +168,8 @@ export type ReplyRow = {
   category: ReplyCategory;
   summary: string | null;
   handled: boolean;
+  assist_status: AssistStatus | null;
+  assist: ReplyAssist | null;
   created_at: string;
 };
 
@@ -168,15 +182,28 @@ export type JobType =
   | 'test_email'
   | 'test_imap'
   | 'test_alert'
+  | 'push_test'
   | 'check_replies'
   | 'prospect_local'
   | 'learn_writing'
   | 'learn_filters'
+  | 'reply_assist'
+  | 'recompute_learned'
+  | 'dedupe_lead'
+  | 'dedupe_backfill'
+  | 'draft_proposal_summary'
   | 'suggest_keywords'
   | 'test_integration'
   | 'trade_scan'
   | 'suggest_trading'
-  | 'quick_add';
+  | 'quick_add'
+  | 'source_indiehackers'
+  | 'source_producthunt'
+  | 'source_linkedin'
+  | 'source_fiverr'
+  | 'source_upwork'
+  | 'prospect_places'
+  | 'recompute_price_market';
 
 export type Job = {
   id: string;
@@ -259,6 +286,8 @@ export type ProspectingSettings = {
   business_types: string[];
   per_run_limit: number;
   interval_hours: number;
+  places_enabled: boolean;
+  places_niches: string[];
   last_run: string | null;
   last_result: Record<string, unknown> | string | null;
 };
@@ -378,11 +407,12 @@ export type TradeState = {
   subs_ok: string[];
 };
 
-export type IntegrationName = 'serper' | 'x' | 'reddit_api' | 'discord' | 'upwork_inbox';
+export type IntegrationName = 'serper' | 'x' | 'reddit_api' | 'discord' | 'upwork_inbox' | 'producthunt' | 'indiehackers' | 'linkedin' | 'fiverr' | 'places';
 export type IntegrationStatus = { ok: boolean; checked_at: string | null; message: string };
 
 export type IntegrationsSettings = {
-  serper: { enabled: boolean; api_key: string; services: boolean; trading: boolean };
+  serper: { enabled: boolean; api_key: string; services: boolean; trading: boolean; indiehackers: boolean; linkedin: boolean; fiverr: boolean };
+  producthunt: { enabled: boolean; token: string };
   x: { enabled: boolean; bearer_token: string };
   reddit_api: { enabled: boolean; client_id: string; client_secret: string; username: string };
   discord: { bot_token: string };

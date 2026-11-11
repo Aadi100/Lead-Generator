@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useTheme, type Theme } from '@/components/theme/ThemeProvider';
 import { MonitorIcon, MoonIcon, SunIcon } from '../Icons';
 import { Card, cx } from '../ui';
+import AppNotificationsCard from './AppNotificationsCard';
 
 const OPTIONS: { id: Theme; label: string; hint: string; icon: ReactNode }[] = [
   { id: 'light', label: 'Light', hint: 'Bright and airy', icon: <SunIcon className="h-5 w-5" /> },
@@ -44,6 +45,8 @@ export default function AppearanceTab() {
           Showing the {resolved} look right now.
         </p>
       </Card>
+
+      <AppNotificationsCard />
 
       <Card title="About the glass look">
         <div className="space-y-2 text-sm text-fg-muted">

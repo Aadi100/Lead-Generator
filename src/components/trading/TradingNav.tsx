@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BuyersIcon, CatalogIcon, MarketIcon, SellersIcon, TradingIcon } from '@/components/Icons';
+import { BuyersIcon, CatalogIcon, MarketIcon, SellersIcon, StockIcon, TradingIcon } from '@/components/Icons';
 import { cx } from '@/components/ui';
 
 const LINKS = [
@@ -10,10 +10,11 @@ const LINKS = [
   { href: '/trading/buyers', label: 'Buyers', icon: BuyersIcon },
   { href: '/trading/sellers', label: 'Sellers', icon: SellersIcon },
   { href: '/trading/market', label: 'Market', icon: MarketIcon },
+  { href: '/trading/stock', label: 'Stock', icon: StockIcon },
   { href: '/trading/catalog', label: 'My catalog', icon: CatalogIcon },
 ];
 
-/** Quick links between the five trading pages (helps on phones where the sidebar is hidden). */
+/** Quick links between the trading pages (helps on phones where the sidebar is hidden). */
 export default function TradingNav() {
   const path = usePathname() ?? '';
   return (

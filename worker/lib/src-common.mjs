@@ -4,7 +4,8 @@ import { getSetting, patchSetting } from './settings.mjs';
 import { createScorer } from './scoring.mjs';
 
 export const INTEGRATION_DEFAULTS = {
-  serper: { enabled: false, api_key: '', services: true, trading: true },
+  serper: { enabled: false, api_key: '', services: true, trading: true, indiehackers: true, linkedin: true, fiverr: true },
+  producthunt: { enabled: true, token: '' },
   x: { enabled: false, bearer_token: '' },
   reddit_api: { enabled: false, client_id: '', client_secret: '', username: '' },
   discord: { bot_token: '' },
@@ -12,7 +13,7 @@ export const INTEGRATION_DEFAULTS = {
   status: {},
 };
 
-export const LABELS = { serper: 'Google search (Serper)', x: 'X (Twitter)', reddit_api: 'Reddit API', discord: 'Discord', upwork_inbox: 'Upwork alerts' };
+export const LABELS = { serper: 'Google search (Serper)', x: 'X (Twitter)', reddit_api: 'Reddit API', discord: 'Discord', upwork_inbox: 'Upwork alerts', producthunt: 'Product Hunt', indiehackers: 'Indie Hackers', linkedin: 'LinkedIn', fiverr: 'Fiverr discovery', places: 'Google Places' };
 const HOUR = 3600 * 1000;
 
 export async function getIntegrations() {

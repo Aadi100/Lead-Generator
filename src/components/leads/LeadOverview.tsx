@@ -8,6 +8,7 @@ import { Badge, CategoryChip, ProgressBar, TrustBadge, cx } from '@/components/u
 import { AlertIcon, SparkIcon, UserIcon } from '@/components/Icons';
 import CopyChip from '@/components/CopyChip';
 import { FitBadge, SectionTitle } from './LeadBits';
+import LeadWhyRank from './LeadWhyRank';
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -163,6 +164,8 @@ export default function LeadOverview({ lead, rows, now }: { lead: Lead; rows: Ou
           )}
         </div>
       </section>
+
+      <LeadWhyRank lead={lead} />
 
       <section aria-label="Timeline">
         <SectionTitle>Dates</SectionTitle>

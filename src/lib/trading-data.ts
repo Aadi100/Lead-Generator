@@ -13,7 +13,7 @@ export const TRADE_LIMIT = 2000;
 
 // Light columns for lists (no description or enrichment blobs); the full row is loaded for the open lead.
 const LIST_COLUMNS =
-  'id,title,url,source,source_detail,type,status,created_at,category,author,contact,budget,budget_amount,posted_at,trust_score,trust_level,is_suspicious,flags,notes,lead_kind,fit_score,trade_side,game,item_type,trade_match,pitched_at,replied_at,outcome_note';
+  'id,title,url,source,source_detail,type,status,created_at,category,author,contact,budget,budget_amount,posted_at,trust_score,trust_level,is_suspicious,flags,notes,lead_kind,fit_score,trade_side,game,item_type,trade_match,pitched_at,replied_at,outcome_note,price_verdict,price_pct,market_median,market_samples,market_basis,stock_item_id';
 
 export function useTradeLeads() {
   const [leads, setLeads] = useState<Lead[]>([]);

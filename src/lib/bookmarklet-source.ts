@@ -105,6 +105,19 @@ export const BOOKMARKLET_SOURCE = String.raw`(function () {
         }
         items.push({ text: cut(flat(raw), MAX_TEXT), url: href, title: cut(title, 140) });
       }
+      if (!items.length && /(^|\.)(fiverr|upwork)\.com$/i.test(host)) {
+        // A single buyer request (Fiverr) or job post (Upwork) you have open. Only the text your browser already shows.
+        var root = document.querySelector('main') || document.querySelector('[role="main"]') || document.body;
+        var h1 = document.querySelector('h1');
+        var pageText = clean(root ? root.innerText || root.textContent : '');
+        if (pageText.length > 40) {
+          items.push({
+            text: cut(pageText, MAX_TEXT),
+            url: String(location.href).split('#')[0].split('?')[0],
+            title: cut(flat(h1 ? h1.textContent : document.title), 140)
+          });
+        }
+      }
     }
     var payload = {
       v: 1,

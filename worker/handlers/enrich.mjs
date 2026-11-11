@@ -2,12 +2,15 @@ import { sb } from '../lib/db.mjs';
 import { log } from '../lib/log.mjs';
 import { nowIso } from '../lib/util.mjs';
 import { enrichWithTimeout } from '../lib/enrich-lead.mjs';
+import { dedupeLead } from '../lib/dedupe-db.mjs';
 
 export async function enrichOne(lead) {
   try {
     const patch = await enrichWithTimeout(lead);
     const { error } = await sb.from('leads').update(patch).eq('id', lead.id);
     if (error) throw new Error(error.message);
+    // Enrichment may have found an email or website: match this lead against the others now.
+    dedupeLead(lead.id).catch((e) => log('dedupe', `${lead.id.slice(0, 8)}: ${e.message}`));
     return patch;
   } catch (e) {
     log('enrich', `${lead.id.slice(0, 8)} failed: ${e.message}`);

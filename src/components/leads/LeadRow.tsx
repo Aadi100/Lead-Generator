@@ -6,7 +6,8 @@ import { budgetLabel, displayDate, isFlagged, timeAgo } from '@/lib/format';
 import { outreachChip } from '@/lib/outreach';
 import { Badge, CategoryChip, Checkbox, TrustBadge, cx } from '@/components/ui';
 import { AlertIcon, MailIcon } from '@/components/Icons';
-import { FitBadge, StatusDot } from './LeadBits';
+import type { AlsoSeenChip } from '@/lib/lead-identity';
+import { AlsoSeenBadge, FitBadge, StatusDot } from './LeadBits';
 
 type RowProps = {
   lead: Lead;
@@ -16,11 +17,12 @@ type RowProps = {
   checked: boolean; // bulk selection
   cursor: boolean; // keyboard cursor
   fresh: boolean;
+  alsoSeen?: AlsoSeenChip | null;
   onOpen: (id: string) => void;
   onCheck: (id: string, value: boolean) => void;
 };
 
-function LeadRowImpl({ lead, now, outreach, selected, checked, cursor, fresh, onOpen, onCheck }: RowProps) {
+function LeadRowImpl({ lead, now, outreach, selected, checked, cursor, fresh, alsoSeen, onOpen, onCheck }: RowProps) {
   const flagged = isFlagged(lead);
   const budget = budgetLabel(lead);
   const chip = outreachChip(outreach);
@@ -66,6 +68,7 @@ function LeadRowImpl({ lead, now, outreach, selected, checked, cursor, fresh, on
               </span>
             )}
             {fresh && <Badge tone="primary" className="shrink-0">New</Badge>}
+            {alsoSeen && <AlsoSeenBadge chip={alsoSeen} className="shrink-0" />}
           </span>
           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-subtle">
             <span className="truncate">

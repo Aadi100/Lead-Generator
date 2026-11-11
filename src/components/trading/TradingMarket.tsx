@@ -11,6 +11,7 @@ import { useUrlParams } from '@/lib/trading-url';
 import JobAction from './JobAction';
 import { SuggestionGrid, useCatalogAdder } from './Suggestions';
 import { PairedBars, TrendLines } from './TradeCharts';
+import PriceTracker from './PriceTracker';
 import TradingNav from './TradingNav';
 
 type Col = 'game' | 'item' | 'wanted' | 'offered' | 'ratio' | 'price';
@@ -139,6 +140,8 @@ export default function TradingMarket() {
           </Reveal>
         </>
       )}
+
+      <PriceTracker />
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
         <Reveal>

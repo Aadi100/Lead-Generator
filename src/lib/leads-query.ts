@@ -1,6 +1,7 @@
 // Leads module helpers: URL <-> view state, filtering and sorting. Services leads only (request + prospect).
 import { CATEGORIES, STATUSES, type Lead, type SortKey, type StatusTab, type TrustFilter } from './types';
 import { isFlagged } from './format';
+import { rankScore } from './rank';
 
 export type LeadsKind = 'all' | 'request' | 'prospect';
 export type LeadsView = 'list' | 'cards';
@@ -95,7 +96,8 @@ export function matchesFilters(lead: Lead, s: LeadsState): boolean {
 export function sortLeads(list: Lead[], sort: SortKey): Lead[] {
   const byNewest = (a: Lead, b: Lead) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   const copy = [...list];
-  if (sort === 'fit') return copy.sort((a, b) => (b.fit_score ?? -1) - (a.fit_score ?? -1) || (b.trust_score ?? -1) - (a.trust_score ?? -1) || byNewest(a, b));
+  // Best match: the fit score nudged by what has worked for you (see rank.ts). Falls back to fit alone.
+  if (sort === 'fit') return copy.sort((a, b) => (rankScore(b) ?? -1) - (rankScore(a) ?? -1) || (b.fit_score ?? -1) - (a.fit_score ?? -1) || (b.trust_score ?? -1) - (a.trust_score ?? -1) || byNewest(a, b));
   if (sort === 'trust') return copy.sort((a, b) => (b.trust_score ?? -1) - (a.trust_score ?? -1) || byNewest(a, b));
   if (sort === 'budget') return copy.sort((a, b) => (b.budget_amount ?? -1) - (a.budget_amount ?? -1) || byNewest(a, b));
   return copy.sort(byNewest);

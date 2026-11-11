@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useJob } from '@/lib/jobs';
 import { useSettingForm } from '@/lib/settings';
 import { fmtDateTime } from '@/lib/format';
@@ -9,7 +10,7 @@ import { SearchIcon } from '../Icons';
 import { Card, Field, JobNote, Spinner, TagInput, Toggle, btnSecondary, inputCls } from '../ui';
 import SaveBar from './SettingsSaveBar';
 
-const OWNED: (keyof ProspectingSettings)[] = ['enabled', 'cities', 'business_types', 'per_run_limit', 'interval_hours'];
+const OWNED: (keyof ProspectingSettings)[] = ['enabled', 'cities', 'business_types', 'per_run_limit', 'interval_hours', 'places_enabled', 'places_niches'];
 
 const KNOWN_TYPES: { id: string; label: string }[] = [
   { id: 'restaurant', label: 'Restaurants' },
@@ -37,6 +38,7 @@ export default function ProspectingTab() {
   const { pushToast } = useShell();
   const form = useSettingForm('prospecting', OWNED);
   const run = useJob();
+  const runPlaces = useJob();
   const p = form.draft;
   const extras = p.business_types.filter((t) => !KNOWN_TYPES.some((k) => k.id === t));
 
@@ -65,6 +67,17 @@ export default function ProspectingTab() {
       pushToast('error', out.error ?? 'The search failed.');
     }
     await form.reload();
+  };
+
+  const placesNow = async () => {
+    if (form.dirty && !(await save())) return;
+    const out = await runPlaces.start('prospect_places', {});
+    if (out.phase === 'done') {
+      const inserted = typeof out.result?.inserted === 'number' ? out.result.inserted : null;
+      pushToast('success', inserted === null ? 'Google Places search finished.' : `Google Places search finished. ${inserted} new ${inserted === 1 ? 'lead' : 'leads'} added.`);
+    } else {
+      pushToast('error', out.error ?? 'The Google Places search failed.');
+    }
   };
 
   const last = describeResult(form.saved.last_result);
@@ -147,6 +160,39 @@ export default function ProspectingTab() {
           </div>
         )}
         <SaveBar dirty={form.dirty} saving={form.saving} onSave={() => void save()} onReset={form.reset} error={form.error} />
+      </Card>
+
+      <Card
+        title="Google Places (optional)"
+        subtitle="Finds local businesses by city and type through your Serper key, then keeps only those with no website or a website that does not load. Uses the same cities as above."
+      >
+        {form.loading ? (
+          <p className="text-sm text-fg-subtle">Loading…</p>
+        ) : (
+          <div className="space-y-4">
+            <Toggle
+              id="pl-on"
+              checked={p.places_enabled}
+              onChange={(v) => form.patch({ places_enabled: v })}
+              label="Also look up businesses through Google Places"
+              description="Needs a Serper API key in Connections. Each search uses a little of your Serper credit, at most four searches per run."
+            />
+            <Field label="Business niches" htmlFor="pl-niches" hint="Plain words, for example: plumber, dentist, wedding photographer. Press Enter after each one.">
+              <TagInput id="pl-niches" label="Business niches" value={p.places_niches} onChange={(v) => form.patch({ places_niches: v })} placeholder="Add a niche" />
+            </Field>
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" onClick={() => void placesNow()} disabled={runPlaces.running || p.cities.length === 0 || p.places_niches.length === 0} className={btnSecondary}>
+                {runPlaces.running ? <Spinner /> : <SearchIcon className="h-4 w-4" />}
+                Find with Google Places now
+              </button>
+              {(p.cities.length === 0 || p.places_niches.length === 0) && <span className="text-xs text-fg-subtle">Add a city and a niche first.</span>}
+            </div>
+            <JobNote phase={runPlaces.phase} error={runPlaces.error} runningText="Searching and checking websites. This can take a minute…" />
+            <p className="text-xs text-fg-subtle">
+              Add or change your key in <Link href="/settings?tab=connections" className="font-semibold text-primary-text hover:underline">Connections</Link>. Google data can be out of date, so check a business is open before you contact it.
+            </p>
+          </div>
+        )}
       </Card>
 
       <Card title="Find prospects now">

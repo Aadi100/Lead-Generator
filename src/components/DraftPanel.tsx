@@ -28,6 +28,8 @@ type Props = {
   pushToast: (kind: ToastItem['kind'], message: string) => void;
   /** Render the flow inside a page or panel (no overlay, no header, no focus trap). Default false = right-hand drawer. */
   inline?: boolean;
+  /** Set when this panel shows a drafted answer to a reply (its row is passed in as step 1). Rewrites then go to the reply assistant. */
+  replyId?: string;
 };
 
 const PLACEHOLDER_RE = /\[[^\]\n]{2,40}\]|\{\{|\}\}|<insert[^>]*>/i;
@@ -57,8 +59,10 @@ export default function DraftPanel({
   onLeadPatch,
   pushToast,
   inline = false,
+  replyId,
 }: Props) {
-  const sorted = useMemo(() => [...rows].sort((a, b) => a.step - b.step), [rows]);
+  // Answers to replies (reply_to_id) are never part of the cold sequence: they only show in reply mode.
+  const sorted = useMemo(() => rows.filter((r) => replyId || !r.reply_to_id).sort((a, b) => a.step - b.step), [rows, replyId]);
   const isTrade = lead.lead_kind === 'trade';
   const channel: OutreachChannel = isTrade ? 'manual' : (sorted[0]?.channel ?? 'email');
   const [step, setStep] = useState(sorted[0]?.step ?? 1);
@@ -307,7 +311,7 @@ export default function DraftPanel({
     const text = instruction.trim();
     if (!text) return;
     for (const r of draftRows) await saveStep(r.step);
-    const out = await rewrite.start('rewrite_draft', { lead_id: lead.id, instruction: text });
+    const out = replyId ? await rewrite.start('reply_assist', { reply_id: replyId, instruction: text }) : await rewrite.start('rewrite_draft', { lead_id: lead.id, instruction: text });
     if (out.phase === 'done' && out.result?.ok !== false) {
       dirty.current.clear();
       setInstruction('');

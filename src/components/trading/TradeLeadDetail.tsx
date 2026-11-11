@@ -13,6 +13,8 @@ import { budgetLabel, isHttpUrl, itemLabel, splitContact, timeAgo } from '@/lib/
 import { normalizeOutreach, sentTodayCount, startOfToday } from '@/lib/outreach';
 import { supabase } from '@/lib/supabaseClient';
 import { useFullLead } from '@/lib/trading-data';
+import { PriceVerdictPanel } from './PriceVsMarket';
+import StockForBuyer from './StockForBuyer';
 import { entryForLead, isScamFlag, marketMedian, priceVsLimit, priceVsMarket, type PriceNote } from '@/lib/trading-stats';
 import type { TradingBundle } from '@/lib/trading-data';
 import { STATUSES, type Lead, type OutreachRow, type Status } from '@/lib/types';
@@ -131,7 +133,7 @@ function AddTaskModal({ lead, open, onClose }: { lead: Lead; open: boolean; onCl
 export default function TradeLeadDetail({ preview, bundle, onPatch, onBack }: Props) {
   const { pushToast, sending, workerOnline } = useShell();
   const { lead: full, loading, error, setLead } = useFullLead(preview.id);
-  const lead: Lead = useMemo(() => ({ ...preview, ...(full ?? {}), status: preview.status, notes: preview.notes, trade_match: preview.trade_match }), [preview, full]);
+  const lead: Lead = useMemo(() => ({ ...preview, ...(full ?? {}), status: preview.status, notes: preview.notes, trade_match: preview.trade_match, price_verdict: preview.price_verdict, price_pct: preview.price_pct, market_median: preview.market_median, market_samples: preview.market_samples, market_basis: preview.market_basis }), [preview, full]);
   const { rows, sentToday, reload: reloadOutreach } = useLeadOutreach(preview.id);
   const [panel, setPanel] = useState(false);
   const [drafting, setDrafting] = useState(false);
@@ -240,7 +242,7 @@ export default function TradeLeadDetail({ preview, bundle, onPatch, onBack }: Pr
 
       <div className="space-y-5 p-4">
         {lead.trade_match && (
-          <Banner tone="success" title="This matches your catalog">
+          <Banner tone="success" title={lead.trade_match.startsWith('Buyer for your stock') ? 'This matches your stock' : 'This matches your catalog'}>
             {lead.trade_match}
           </Banner>
         )}
@@ -257,7 +259,10 @@ export default function TradeLeadDetail({ preview, bundle, onPatch, onBack }: Pr
             </div>
           </div>
           {isSeller && !entry && lead.budget_amount !== null && <p className="mt-1 text-xs text-fg-subtle">No matching item in your wish list, so there is no limit to compare with.</p>}
+          <PriceVerdictPanel lead={lead} />
         </section>
+
+        {!isSeller && <StockForBuyer lead={lead} />}
 
         <section aria-label="Trust and warning signs">
           <div className="flex flex-wrap items-center gap-2">

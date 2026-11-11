@@ -46,5 +46,13 @@ export async function runUpwork(deps = {}) {
   return { emails: fresh.length, matched: leads.length, inserted };
 }
 
-export const jobs = {};
+export const jobs = {
+  async source_upwork() {
+    const r = await runUpwork();
+    if (r.skipped === 'off') throw new Error('Upwork alerts are switched off in Settings > Connections.');
+    if (r.skipped) throw new Error(r.skipped === 'no inbox' ? 'Set up your inbox first (Settings > Reply tracking).' : `Skipped (${r.skipped}).`);
+    if (r.failed) throw new Error('Could not read the inbox. See the status in Settings > Connections.');
+    return r;
+  },
+};
 export const tasks = [makeTask('upwork_inbox', 10 * 60 * 1000, () => runUpwork())];

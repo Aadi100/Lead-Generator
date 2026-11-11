@@ -11,6 +11,7 @@ export type SettingsTabId =
   | 'alerts'
   | 'prospecting'
   | 'trading'
+  | 'proposals'
   | 'appearance'
   | 'data';
 
@@ -41,6 +42,10 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       { id: 'prospecting', label: 'Local prospecting' },
       { id: 'trading', label: 'Trading' },
     ],
+  },
+  {
+    label: 'Proposals',
+    tabs: [{ id: 'proposals', label: 'Proposals & quotes' }],
   },
   {
     label: 'Appearance & data',

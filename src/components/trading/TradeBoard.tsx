@@ -8,11 +8,15 @@ import { BuyersIcon, FilterIcon, SearchIcon, SellersIcon } from '@/components/Ic
 import { Badge, Banner, Button, Checkbox, EmptyState, Input, Select, SkeletonRows, Tabs, TrustBadge, cx } from '@/components/ui';
 import { budgetLabel, itemLabel, timeAgo } from '@/lib/format';
 import { supabase } from '@/lib/supabaseClient';
+import { usePriceRates, useStock } from '@/lib/stock-data';
+import { matchStock } from '../../../worker/lib/stock-match.mjs';
 import { useTradeLeads, useTradingSettings } from '@/lib/trading-data';
 import { entryForLead, leadTime, priceVsLimit } from '@/lib/trading-stats';
 import { useUrlParams } from '@/lib/trading-url';
 import { STATUSES, type Lead, type Status, type TradeSide } from '@/lib/types';
 import JobAction from './JobAction';
+import { PriceVerdictBadge } from './PriceVsMarket';
+import { askVsBudget } from './StockForBuyer';
 import { PriceChip } from './TradeLeadDetail';
 import TradeLeadDetail from './TradeLeadDetail';
 import TradingNav from './TradingNav';
@@ -39,7 +43,7 @@ function count<T>(items: T[], key: (t: T) => string | null): { value: string; n:
   return Array.from(m, ([value, n]) => ({ value, n })).sort((a, b) => b.n - a.n || a.value.localeCompare(b.value));
 }
 
-function passes(l: Lead, f: Filters, skip?: 'status'): boolean {
+function passes(l: Lead, f: Filters, matchedIds: Set<string> | null, skip?: 'status'): boolean {
   if (f.q) {
     const hay = `${l.title} ${l.game ?? ''} ${l.author ?? ''} ${l.source_detail ?? ''}`.toLowerCase();
     if (!hay.includes(f.q.toLowerCase())) return false;
@@ -50,17 +54,17 @@ function passes(l: Lead, f: Filters, skip?: 'status'): boolean {
   const max = f.max.trim() === '' ? null : Number(f.max);
   if (min !== null && Number.isFinite(min) && (l.budget_amount === null || l.budget_amount < min)) return false;
   if (max !== null && Number.isFinite(max) && (l.budget_amount === null || l.budget_amount > max)) return false;
-  if (f.matched && !l.trade_match) return false;
+  if (f.matched && !(matchedIds ? matchedIds.has(l.id) : !!l.trade_match)) return false;
   if (f.trust === 'Suspicious' ? !l.is_suspicious : f.trust && l.trust_level !== f.trust) return false;
   if (skip !== 'status' && f.status && l.status !== f.status) return false;
   if (f.source && l.source !== f.source) return false;
   return true;
 }
 
-function sortLeads(list: Lead[], sort: SortKey): Lead[] {
+function sortLeads(list: Lead[], sort: SortKey, matchedIds: Set<string> | null): Lead[] {
   const out = [...list];
   const best = (a: Lead, b: Lead) =>
-    Number(!!b.trade_match) - Number(!!a.trade_match) || (b.fit_score ?? 0) - (a.fit_score ?? 0) || (b.trust_score ?? 0) - (a.trust_score ?? 0) || leadTime(b) - leadTime(a);
+    Number(matchedIds ? matchedIds.has(b.id) : !!b.trade_match) - Number(matchedIds ? matchedIds.has(a.id) : !!a.trade_match) || (b.fit_score ?? 0) - (a.fit_score ?? 0) || (b.trust_score ?? 0) - (a.trust_score ?? 0) || leadTime(b) - leadTime(a);
   if (sort === 'newest') out.sort((a, b) => leadTime(b) - leadTime(a));
   else if (sort === 'price_low') out.sort((a, b) => (a.budget_amount ?? Infinity) - (b.budget_amount ?? Infinity));
   else if (sort === 'price_high') out.sort((a, b) => (b.budget_amount ?? -1) - (a.budget_amount ?? -1));
@@ -75,6 +79,8 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
   const { get, set } = useUrlParams();
   const { leads: all, loading, error, reload, patchLocal } = useTradeLeads();
   const { bundle } = useTradingSettings();
+  const { items: stockItems } = useStock();
+  const { rates } = usePriceRates();
   const [visible, setVisible] = useState(PAGE);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -94,11 +100,24 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
   const leadId = get('lead');
 
   const mine = useMemo(() => all.filter((l) => l.trade_side === side), [all, side]);
+  // With stock rows, buyer matches come from items in stock (live); otherwise the catalog label saved by the worker is used.
+  const stockMode = isBuyer && stockItems.some((s) => s.status !== 'archived');
+  const stockMatches = useMemo(() => {
+    const out = new Map<string, ReturnType<typeof matchStock>[number]>();
+    if (!stockMode) return out;
+    for (const l of mine) {
+      const m = matchStock(l, stockItems, { rates })[0];
+      if (m) out.set(l.id, m);
+    }
+    return out;
+  }, [stockMode, mine, stockItems, rates]);
+  const matchedIds = useMemo(() => (stockMode ? new Set(stockMatches.keys()) : null), [stockMode, stockMatches]);
+  const inStockCount = useMemo(() => stockItems.filter((s) => s.status === 'in_stock' && s.quantity > 0).length, [stockItems]);
   const games = useMemo(() => count(mine, (l) => l.game), [mine]);
   const items = useMemo(() => count(mine, (l) => l.item_type), [mine]);
   const sources = useMemo(() => count(mine, (l) => l.source), [mine]);
-  const inScope = useMemo(() => mine.filter((l) => passes(l, f, 'status')), [mine, f.q, f.game, f.item, f.min, f.max, f.matched, f.trust, f.source]); // eslint-disable-line react-hooks/exhaustive-deps
-  const shown = useMemo(() => sortLeads(inScope.filter((l) => !f.status || l.status === f.status), f.sort), [inScope, f.status, f.sort]);
+  const inScope = useMemo(() => mine.filter((l) => passes(l, f, matchedIds, 'status')), [mine, matchedIds, f.q, f.game, f.item, f.min, f.max, f.matched, f.trust, f.source]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = useMemo(() => sortLeads(inScope.filter((l) => !f.status || l.status === f.status), f.sort, matchedIds), [inScope, f.status, f.sort, matchedIds]);
   const statusCounts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const l of inScope) c[l.status] = (c[l.status] ?? 0) + 1;
@@ -144,6 +163,16 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
         actions={<JobAction type="trade_scan" label="Find leads now" runningText="Searching Reddit and Discord" variant="primary" successText={(r) => `Found ${Number(r?.inserted ?? 0)} new trade leads.`} onDone={() => void reload()} />}
       />
       <TradingNav />
+
+      {isBuyer && !loading && (
+        <p className="mb-3 px-1 text-[13px] text-fg-muted">
+          {stockMode ? (
+            <>Matching buyers to your <Link href="/trading/stock" className="font-medium text-primary-text hover:underline">stock</Link>: {inStockCount} {inStockCount === 1 ? 'item is' : 'items are'} in stock. Sold or reserved items are not matched.</>
+          ) : (
+            <>You have no stock yet, so buyers are matched to your catalog. <Link href="/trading/stock" className="font-medium text-primary-text hover:underline">Add stock</Link> to match only what you really hold.</>
+          )}
+        </p>
+      )}
 
       {error && (
         <Banner tone="danger" title="Could not load trade leads" className="mb-4" action={<Button size="sm" onClick={() => void reload()}>Retry</Button>}>
@@ -205,7 +234,7 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
                 ))}
               </Select>
               <div className="flex items-center">
-                <Checkbox checked={f.matched} onChange={(v) => update({ matched: v ? '1' : null })} label="Matches my catalog only" />
+                <Checkbox checked={f.matched} onChange={(v) => update({ matched: v ? '1' : null })} label={stockMode ? 'Matches my stock only' : 'Matches my catalog only'} />
               </div>
             </div>
             <div className="mt-3">
@@ -254,7 +283,7 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
                 </p>
                 <ul className="space-y-2">
                   {shown.slice(0, visible).map((l) => (
-                    <LeadRow key={l.id} lead={l} selected={l.id === leadId} bundle={bundle} onSelect={() => set({ lead: l.id })} />
+                    <LeadRow key={l.id} lead={l} selected={l.id === leadId} bundle={bundle} stockMode={stockMode} stockMatch={stockMatches.get(l.id)} onSelect={() => set({ lead: l.id })} />
                   ))}
                 </ul>
                 {visible < shown.length && (
@@ -287,7 +316,7 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
   );
 }
 
-function LeadRow({ lead, selected, bundle, onSelect }: { lead: Lead; selected: boolean; bundle: ReturnType<typeof useTradingSettings>['bundle']; onSelect: () => void }) {
+function LeadRow({ lead, selected, bundle, stockMode, stockMatch, onSelect }: { lead: Lead; selected: boolean; bundle: ReturnType<typeof useTradingSettings>['bundle']; stockMode: boolean; stockMatch?: ReturnType<typeof matchStock>[number]; onSelect: () => void }) {
   const price = budgetLabel(lead);
   const note = lead.trade_side === 'seller' && bundle ? priceVsLimit(lead.budget_amount, entryForLead(lead, bundle.trading)) : null;
   return (
@@ -312,12 +341,19 @@ function LeadRow({ lead, selected, bundle, onSelect }: { lead: Lead; selected: b
           <TrustBadge level={lead.trust_level} score={lead.trust_score} />
           {lead.status !== 'New' && <Badge tone="info">{lead.status}</Badge>}
         </div>
-        {lead.trade_match && <p className="mt-1.5 truncate text-xs font-medium text-accent-text">{lead.trade_match}</p>}
+        {stockMode ? (
+          stockMatch && <p className="mt-1.5 truncate text-xs font-medium text-accent-text">{stockMatch.item.title} · {askVsBudget(stockMatch, lead)}</p>
+        ) : (
+          lead.trade_match && <p className="mt-1.5 truncate text-xs font-medium text-accent-text">{lead.trade_match}</p>
+        )}
         <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <p className="min-w-0 truncate text-xs text-fg-subtle">
             {lead.source_detail ?? lead.source} · {timeAgo(lead.posted_at ?? lead.created_at)}
           </p>
-          {note && <PriceChip note={note} />}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {note && <PriceChip note={note} />}
+            <PriceVerdictBadge lead={lead} />
+          </div>
         </div>
       </button>
     </li>

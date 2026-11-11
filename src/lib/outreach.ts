@@ -12,6 +12,7 @@ import type {
   Status,
   Warning,
 } from './types';
+import type { AssistActionId, AssistCategory, ReplyAssist } from './types-intel';
 
 const OUTREACH_STATUSES: OutreachStatus[] = ['draft', 'queued', 'sending', 'scheduled', 'sent', 'failed', 'cancelled', 'replied'];
 const REPLY_CATEGORIES: ReplyCategory[] = ['interested', 'question', 'not_interested', 'out_of_office', 'bounce', 'other'];
@@ -62,8 +63,36 @@ export function normalizeOutreach(raw: Record<string, unknown>): OutreachRow {
     override_warnings: raw.override_warnings === true,
     rating: raw.rating === 'good' || raw.rating === 'bad' ? raw.rating : null,
     feedback_note: str(raw.feedback_note),
+    reply_to_id: str(raw.reply_to_id),
     created_at: str(raw.created_at) ?? new Date().toISOString(),
     updated_at: str(raw.updated_at) ?? new Date().toISOString(),
+  };
+}
+
+const ASSIST_CATEGORIES: AssistCategory[] = ['interested', 'asks_price', 'asks_portfolio', 'objection', 'not_now', 'unsubscribe', 'out_of_office', 'other'];
+
+function normalizeAssist(v: unknown): ReplyAssist | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  if (!ASSIST_CATEGORIES.includes(o.classification as AssistCategory)) return null;
+  const next = o.next_step && typeof o.next_step === 'object' ? (o.next_step as Record<string, unknown>) : null;
+  const task = o.task && typeof o.task === 'object' ? (o.task as Record<string, unknown>) : null;
+  const actions = Array.isArray(o.actions)
+    ? o.actions
+        .filter((a): a is Record<string, unknown> => !!a && typeof a === 'object')
+        .map((a) => ({ id: String(a.id) as AssistActionId, label: str(a.label) ?? String(a.id), primary: a.primary === true }))
+    : [];
+  return {
+    classification: o.classification as AssistCategory,
+    summary: str(o.summary) ?? '',
+    next_step: next ? { id: String(next.id) as AssistActionId, label: str(next.label) ?? '', reason: str(next.reason) ?? '' } : null,
+    actions,
+    task: task && str(task.title) ? { title: String(task.title), due_in_days: num(task.due_in_days) ?? 2 } : null,
+    draft_outreach_id: str(o.draft_outreach_id),
+    mode: o.mode === 'claude' || o.mode === 'rules' || o.mode === 'template' ? o.mode : null,
+    generated_at: str(o.generated_at),
+    suppress_email: str(o.suppress_email),
+    already_suppressed: o.already_suppressed === true,
   };
 }
 
@@ -81,6 +110,8 @@ export function normalizeReply(raw: Record<string, unknown>): ReplyRow {
     category: REPLY_CATEGORIES.includes(raw.category as ReplyCategory) ? (raw.category as ReplyCategory) : 'other',
     summary: str(raw.summary),
     handled: raw.handled === true,
+    assist_status: raw.assist_status === 'pending' || raw.assist_status === 'done' || raw.assist_status === 'failed' || raw.assist_status === 'skipped' ? raw.assist_status : null,
+    assist: normalizeAssist(raw.assist),
     created_at: str(raw.created_at) ?? new Date().toISOString(),
   };
 }
@@ -198,6 +229,7 @@ export const OUTREACH_STATUS_LABEL: Record<OutreachStatus, string> = {
 };
 
 export function stepLabel(step: number, days: number[], channel: 'email' | 'manual' = 'email'): string {
+  if (step >= 10) return 'Your answer';
   if (step <= 1) return channel === 'manual' ? 'Message' : 'Email';
   const day = days[step - 2];
   return `Follow-up ${step - 1}${day ? ` (day ${day})` : ''}`;

@@ -90,7 +90,17 @@ async function testUpwork(cfg, d) {
   }
 }
 
-const TESTS = { serper: testSerper, x: testX, reddit_api: testReddit, discord: testDiscord, upwork_inbox: testUpwork };
+async function testProductHunt(cfg, d) {
+  const token = String(cfg.token || '').trim().replace(/^bearer\s+/i, '');
+  if (!token) return { ok: true, message: 'No token needed: the public launch feed is used. Add a token to also check each product website.' };
+  const res = await d.fetchJson('https://api.producthunt.com/v2/api/graphql', {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: '{ viewer { user { name } } }' }),
+  });
+  if (res.ok && !res.json?.errors) return { ok: true, message: 'Connected. The token works.' };
+  return res.status === 401 || res.json?.errors ? { ok: false, message: 'Product Hunt rejected the token. Create a developer token at producthunt.com/v2/oauth/applications and paste it again.' } : fail('producthunt', res, 'api.producthunt.com');
+}
+
+const TESTS = { producthunt: testProductHunt, serper: testSerper, x: testX, reddit_api: testReddit, discord: testDiscord, upwork_inbox: testUpwork };
 
 export async function testIntegration(name, deps = {}) {
   const fn = TESTS[name];

@@ -2,6 +2,7 @@ import { log } from '../lib/log.mjs';
 import { getSetting, patchSetting } from '../lib/settings.mjs';
 import { fetchPage, fetchJson } from '../lib/http-fetch.mjs';
 import { insertLeads } from '../lib/leads-db.mjs';
+import { loadStockForMatch } from '../lib/stock-db.mjs';
 import { sleep } from '../lib/util.mjs';
 import { parseRedditAtom, redditPostToLead, discordMessageToLead, gameIndexFor, snowflakeGt, worthSaving } from '../lib/trade-feed.mjs';
 
@@ -29,7 +30,7 @@ export async function scanReddit(trading) {
   if (res.status === 429) return { seen: 0, matched: 0, inserted: 0, error: 'Reddit is rate-limiting this connection; will retry next time' };
   if (!res.ok) return { seen: 0, matched: 0, inserted: 0, error: `Reddit feed answered ${res.status || res.error}` };
   const entries = parseRedditAtom(res.text);
-  const ctx = { trading, gameIndex: gameIndexFor(trading) };
+  const ctx = { trading, gameIndex: gameIndexFor(trading), stock: await loadStockForMatch().catch(() => undefined) };
   const leads = entries.map((e) => redditPostToLead(e, ctx)).filter(worthSaving);
   const inserted = leads.length ? await insertLeads(leads) : 0;
   return { seen: entries.length, matched: leads.length, inserted };
@@ -58,7 +59,7 @@ export async function scanDiscord(trading, integrations, state) {
   const token = integrations.discord?.bot_token;
   const channels = arr(trading.discord?.channels).filter((c) => c && /^\d{5,25}$/.test(String(c.id || '').trim()));
   if (!trading.discord?.enabled || !token || !channels.length) return { skipped: true, matched: 0, inserted: 0, errors: {} };
-  const ctx = { trading, gameIndex: gameIndexFor(trading) };
+  const ctx = { trading, gameIndex: gameIndexFor(trading), stock: await loadStockForMatch().catch(() => undefined) };
   const newest = { ...(state.discord || {}) };
   const errors = {};
   let matched = 0;

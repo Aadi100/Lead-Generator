@@ -5,6 +5,7 @@ import {
   BuyersIcon,
   CaptureIcon,
   CatalogIcon,
+  StockIcon,
   ContactsIcon,
   DashboardIcon,
   DealsIcon,
@@ -19,6 +20,7 @@ import {
   TasksIcon,
   TradingIcon,
 } from '@/components/Icons';
+import { ProposalsIcon } from '@/components/proposals/ProposalIcon';
 
 export type IconComp = (props: { className?: string }) => JSX.Element;
 
@@ -69,6 +71,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'tasks', label: 'Tasks', href: '/tasks', icon: TasksIcon, description: 'Follow-ups and to-dos', keywords: 'todo reminders due', badge: 'tasks' },
       { id: 'contacts', label: 'Contacts', href: '/contacts', icon: ContactsIcon, description: 'People and companies you deal with', keywords: 'people companies address book' },
       { id: 'deals', label: 'Deals', href: '/deals', icon: DealsIcon, description: 'Open and closed deals', keywords: 'orders sales revenue won', badge: 'deals' },
+      { id: 'proposals', label: 'Proposals', href: '/proposals', icon: ProposalsIcon, description: 'Quotes and one page PDF proposals', keywords: 'quote estimate pdf pricing packages bid' },
     ],
   },
   {
@@ -82,6 +85,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'buyers', label: 'Buyers', href: '/trading/buyers', icon: BuyersIcon, description: 'People who want to buy what you sell', keywords: 'trade buyers customers wtb', badge: 'buyers' },
       { id: 'sellers', label: 'Sellers', href: '/trading/sellers', icon: SellersIcon, description: 'People selling what you want', keywords: 'trade sellers suppliers wts', badge: 'sellers' },
       { id: 'market', label: 'Market', href: '/trading/market', icon: MarketIcon, description: 'Demand, supply and prices by game', keywords: 'prices demand supply what to sell' },
+      { id: 'stock', label: 'Stock', href: '/trading/stock', icon: StockIcon, description: 'What you hold to sell, with prices and profit', keywords: 'inventory stock items quantity sold profit listings' },
       { id: 'catalog', label: 'My catalog', href: '/trading/catalog', icon: CatalogIcon, description: 'What you sell and what you want to buy', keywords: 'inventory stock items accounts' },
     ],
   },

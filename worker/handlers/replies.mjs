@@ -5,6 +5,8 @@ import { log } from '../lib/log.mjs';
 import { getSetting, setSetting } from '../lib/settings.mjs';
 import { runClaude, extractJson, claudeStatus } from '../lib/claude.mjs';
 import { notify } from '../lib/notify.mjs';
+import { enqueueAssist } from '../lib/reply-assist-db.mjs';
+import { pushEvent } from '../lib/push.mjs';
 import {
   REPLY_CATEGORIES, fromAddress, isOwnMessage, isBounce, bouncedRecipient, matchReply, cleanReplyBody,
   classifyReplyRules, buildClassifyPrompt,
@@ -86,20 +88,23 @@ export async function handleReply(parsed, match, budget, alerts) {
   const { category, summary } = await classify(parsed, budget);
   const receivedAt = parsed.date ? new Date(parsed.date).toISOString() : nowIso();
   const messageId = parsed.messageId || `noid:${from.email}:${receivedAt}:${parsed.subject || ''}`;
-  const { error } = await sb.from('replies').insert({
+  const { data: inserted, error } = await sb.from('replies').insert({
     outreach_id: row.id, lead_id: row.lead_id, from_email: from.email, from_name: from.name, subject: parsed.subject || '',
     body: cleanReplyBody(parsed.text), message_id: messageId, received_at: receivedAt, category, summary, handled: category === 'out_of_office',
-  });
+  }).select('id').maybeSingle();
   if (error) return error.code === '23505' ? { duplicate: true } : Promise.reject(new Error(error.message));
   if (category === 'out_of_office') return { category };
+  // Draft a suggested answer (never sent without a click). The assist scan also catches this if it fails here.
+  if (inserted?.id) enqueueAssist(inserted.id).catch((e) => log('replies', `could not queue reply assist: ${e.message}`));
 
   await sb.from('outreach').update({ status: 'replied', updated_at: nowIso() }).eq('id', row.id).in('status', ['sent', 'replied']);
-  await sb.from('outreach').update({ status: 'cancelled', error: 'Cancelled: they replied', updated_at: nowIso() }).eq('lead_id', row.lead_id).in('status', ['scheduled', 'queued']);
+  await sb.from('outreach').update({ status: 'cancelled', error: 'Cancelled: they replied', updated_at: nowIso() }).eq('lead_id', row.lead_id).is('reply_to_id', null).in('status', ['scheduled', 'queued']);
   const { data: lead } = await sb.from('leads').select('status,title').eq('id', row.lead_id).maybeSingle();
   if (lead && !['Won', 'Lost'].includes(lead.status)) await sb.from('leads').update({ status: 'Replied', replied_at: receivedAt }).eq('id', row.lead_id);
   if (category === 'not_interested') await sb.from('suppressions').upsert({ email: from.email, reason: 'asked not to be contacted' });
   await sb.from('learning_events').insert({ kind: 'reply', lead_id: row.lead_id, outreach_id: row.id, data: { category, step: row.step } });
 
+  pushEvent('reply', { title: 'New reply', body: `${from.name || from.email}: ${category.replace('_', ' ')}`, url: '/outbox', tag: `reply-${row.id}` });
   if (alerts.enabled && alerts.on_reply) {
     try {
       await notify({

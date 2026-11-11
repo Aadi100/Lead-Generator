@@ -146,6 +146,7 @@ export function ReplyPreview({
   onHandled,
   onLeadStatus,
   onCreateTask,
+  assist,
 }: {
   reply: ReplyWithLead;
   now: number;
@@ -153,6 +154,8 @@ export function ReplyPreview({
   onHandled: (reply: ReplyWithLead) => void;
   onLeadStatus: (reply: ReplyWithLead, status: Status) => void;
   onCreateTask: (reply: ReplyWithLead) => void;
+  /** The reply assistant card (classification, next step, drafted answer). */
+  assist?: React.ReactNode;
 }) {
   const [full, setFull] = useState(false);
   const cat = REPLY_CATEGORY[reply.category];
@@ -195,6 +198,8 @@ export function ReplyPreview({
           </button>
         </Section>
       )}
+
+      {assist}
 
       <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
         {!reply.handled && (

@@ -13,7 +13,7 @@ import type {
 
 type Raw = Record<string, unknown>;
 
-const INTEGRATION_NAMES: IntegrationName[] = ['serper', 'x', 'reddit_api', 'discord', 'upwork_inbox'];
+const INTEGRATION_NAMES: IntegrationName[] = ['serper', 'x', 'reddit_api', 'discord', 'upwork_inbox', 'producthunt', 'indiehackers', 'linkedin', 'fiverr', 'places'];
 
 const obj = (v: unknown): Raw => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Raw) : {});
 const s = (v: unknown, d = ''): string => (typeof v === 'string' ? v : d);
@@ -223,7 +223,8 @@ const SANITIZERS: { [K in keyof SettingsMap]: (r: Raw) => SettingsMap[K] } = {
     const x = obj(r.x);
     const rd = obj(r.reddit_api);
     return {
-      serper: { enabled: b(sp.enabled, false), api_key: s(sp.api_key), services: b(sp.services, true), trading: b(sp.trading, true) },
+      serper: { enabled: b(sp.enabled, false), api_key: s(sp.api_key), services: b(sp.services, true), trading: b(sp.trading, true), indiehackers: b(sp.indiehackers, true), linkedin: b(sp.linkedin, true), fiverr: b(sp.fiverr, true) },
+      producthunt: { enabled: b(obj(r.producthunt).enabled, true), token: s(obj(r.producthunt).token) },
       x: { enabled: b(x.enabled, false), bearer_token: s(x.bearer_token) },
       reddit_api: { enabled: b(rd.enabled, false), client_id: s(rd.client_id), client_secret: s(rd.client_secret), username: s(rd.username) },
       discord: { bot_token: s(obj(r.discord).bot_token) },
@@ -237,6 +238,8 @@ const SANITIZERS: { [K in keyof SettingsMap]: (r: Raw) => SettingsMap[K] } = {
     business_types: Array.isArray(r.business_types) ? list(r.business_types) : [],
     per_run_limit: n(r.per_run_limit, 30),
     interval_hours: n(r.interval_hours, 24),
+    places_enabled: b(r.places_enabled, false),
+    places_niches: list(r.places_niches),
     last_run: sn(r.last_run),
     last_result: typeof r.last_result === 'string' ? r.last_result : r.last_result && typeof r.last_result === 'object' ? (r.last_result as Raw) : null,
   }),

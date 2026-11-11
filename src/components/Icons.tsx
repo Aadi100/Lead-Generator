@@ -236,6 +236,7 @@ export const BuyersIcon = make(<><circle cx="9" cy="20" r="1.3" /><circle cx="18
 export const SellersIcon = make(<><path d="M3 9.5 4.5 4h15L21 9.5" /><path d="M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" /><path d="M5 12.5V20h14v-7.5" /><path d="M10 20v-4.5h4V20" /></>);
 export const MarketIcon = make(<><path d="m3 17 6-6 4 4 8-8" /><path d="M15 7h6v6" /></>);
 export const CatalogIcon = make(<><path d="M21 8 12 3 3 8l9 5 9-5Z" /><path d="M3 8v8l9 5 9-5V8" /><path d="M12 13v8" /></>);
+export const StockIcon = make(<><rect x="3" y="3" width="18" height="6" rx="1.5" /><path d="M5 9v10a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19V9" /><path d="M10 13h4" /></>);
 export const AnalyticsIcon = make(<><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M22 20H2" /></>);
 export const ActivityIcon = make(<path d="M3 12h4l3-8 4 16 3-8h4" />);
 export const SourcesIcon = make(<><path d="M4 11a9 9 0 0 1 9 9" /><path d="M4 4a16 16 0 0 1 16 16" /><circle cx="5" cy="19" r="1.2" fill="currentColor" /></>);

@@ -98,6 +98,7 @@ export default function InstallCard() {
           <p className="font-medium">Good to know</p>
           <ul className="mt-1 list-disc space-y-1 pl-5">
             <li>It only sees what is on your screen at that moment. It cannot see anything you have not opened.</li>
+            <li>Fiverr buyer requests and Upwork jobs need you to be logged in, so Lead Radar never fetches them. Open one yourself and click the bookmark: it reads the request or job on screen. Upwork alert emails can also be read from your inbox (Settings &gt; Connections).</li>
             <li>It works best on pages that list offers with prices. On other pages, select the text first.</li>
             <li>Only capture from servers and groups you are a member of, and keep to each site&apos;s rules.</li>
             <li>The bookmark opens this dashboard at {origin || 'this address'}, so it only works on the computer where the dashboard runs.</li>

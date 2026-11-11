@@ -2,15 +2,20 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { Lead, OutreachRow, SendingSettings, Status } from '@/lib/types';
+import type { Lead, OutreachRow, ReplyRow, SendingSettings, Status } from '@/lib/types';
+import type { LeadLink } from '@/lib/types-intel';
+import type { LeadGroupInfo } from '@/lib/lead-identity';
 import { isHttpUrl, timeAgo } from '@/lib/format';
 import type { ToastItem } from '@/components/ui';
 import { Button, IconButton, Spinner, Tabs, cx } from '@/components/ui';
+import { ProposalsIcon } from '@/components/proposals/ProposalIcon';
 import { CalendarIcon, DealsIcon, ExternalIcon, MailIcon, SparkIcon, XIcon } from '@/components/Icons';
 import DraftPanel from '@/components/DraftPanel';
 import EnrichmentBlock from '@/components/EnrichmentBlock';
 import LeadOverview from './LeadOverview';
 import LeadNotes from './LeadNotes';
+import LeadAlsoSeen from './LeadAlsoSeen';
+import ReplyAssistCard from '@/components/outbox/ReplyAssistCard';
 import { NEXT_STEP, StatusDot } from './LeadBits';
 
 export type DetailTab = 'overview' | 'company' | 'messages' | 'notes';
@@ -36,10 +41,24 @@ export type LeadDetailProps = {
   onLeadPatch: (id: string, patch: { status?: Status; pitched_at?: string }) => void;
   onReload: () => void;
   pushToast: (kind: ToastItem['kind'], message: string) => void;
+  /** Duplicate detection: the other places this person or ad was found. */
+  identity?: {
+    info: LeadGroupInfo | undefined;
+    leadsById: Map<string, Lead>;
+    outreachByLead: Map<string, OutreachRow[]>;
+    decide: (link: LeadLink, state: 'confirmed' | 'split' | 'auto' | 'suspected') => Promise<string | null>;
+  };
+  /** Replies from this lead (newest first) for the reply assistant. */
+  replies?: ReplyRow[];
+  onRepliesReload?: () => void;
 };
 
 export default function LeadDetail(props: LeadDetailProps) {
-  const { mode, lead, rows, now, sending, sentToday, workerOnline, drafting, enriching, onClose, onStatus, onNotes, onDraft, onEnrich, onLeadPatch, onReload, pushToast } = props;
+  const { mode, lead, rows: allRows, now, sending, sentToday, workerOnline, drafting, enriching, onClose, onStatus, onNotes, onDraft, onEnrich, onLeadPatch, onReload, pushToast, identity, replies, onRepliesReload } = props;
+  // Answers to replies (reply_to_id) are shown by the reply assistant, not in the cold sequence.
+  const rows = allRows.filter((r) => !r.reply_to_id);
+  const replyDrafts = allRows.filter((r) => r.reply_to_id);
+  const answerable = (replies ?? []).filter((r) => r.category !== 'bounce' && r.category !== 'out_of_office').slice(0, 2);
   const [tab, setTab] = useState<DetailTab>('overview');
   const [taskSignal, setTaskSignal] = useState(0);
 
@@ -100,6 +119,13 @@ export default function LeadDetail(props: LeadDetailProps) {
           >
             <DealsIcon className="h-4 w-4" aria-hidden="true" />
             Create deal
+          </Link>
+          <Link
+            href={`/proposals?new=1&lead=${encodeURIComponent(lead.id)}`}
+            className="btn inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-ctl border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2 coarse:min-h-11"
+          >
+            <ProposalsIcon className="h-4 w-4" />
+            Create proposal
           </Link>
           <Button
             onClick={() => {
@@ -163,8 +189,44 @@ export default function LeadDetail(props: LeadDetailProps) {
       </div>
 
       <div className={cx('py-4', mode === 'panel' && 'min-h-0 flex-1 overflow-y-auto px-4')} role="tabpanel" aria-label={tab}>
-        {tab === 'overview' && <LeadOverview lead={lead} rows={rows} now={now} />}
+        {tab === 'overview' && (
+          <div className="space-y-5">
+            {identity && (
+              <LeadAlsoSeen
+                lead={lead}
+                info={identity.info}
+                leadsById={identity.leadsById}
+                outreachByLead={identity.outreachByLead}
+                now={now}
+                decide={identity.decide}
+                pushToast={pushToast}
+              />
+            )}
+            <LeadOverview lead={lead} rows={rows} now={now} />
+          </div>
+        )}
         {tab === 'company' && <EnrichmentBlock key={lead.id} lead={lead} busy={enriching} onEnrich={() => onEnrich(lead)} now={now} defaultOpen />}
+        {tab === 'messages' && answerable.length > 0 && (
+          <div className="mb-4 space-y-3">
+            {answerable.map((r) => (
+              <ReplyAssistCard
+                key={`${r.id}-${r.assist?.generated_at ?? r.assist_status ?? 'none'}`}
+                reply={r}
+                lead={lead}
+                draft={replyDrafts.find((d) => d.reply_to_id === r.id) ?? null}
+                sending={sending}
+                sentToday={sentToday}
+                workerOnline={workerOnline}
+                onReload={() => {
+                  onReload();
+                  onRepliesReload?.();
+                }}
+                onLeadStatus={(s) => onStatus(lead.id, s)}
+                pushToast={pushToast}
+              />
+            ))}
+          </div>
+        )}
         {tab === 'messages' && (
           <DraftPanel
             key={lead.id}

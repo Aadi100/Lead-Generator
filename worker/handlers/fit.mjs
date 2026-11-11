@@ -3,6 +3,7 @@ import { log } from '../lib/log.mjs';
 import { getSetting, setSetting } from '../lib/settings.mjs';
 import { computeFit } from '../lib/fit-core.mjs';
 import { fetchAllLeads } from '../lib/fit-db.mjs';
+import { loadStockForMatch } from '../lib/stock-db.mjs';
 import { tradingHash } from '../lib/trade-match.mjs';
 
 const COLS = 'id,title,description,tags,category,source,source_detail,lead_kind,trust_score,trust_level,budget_amount,best_email,is_suspicious,fit_score,trade_side,game,item_type,trade_match';
@@ -32,7 +33,8 @@ export async function fitScan() {
   const [profile, summary, filterLearning, state, targeting, trading] = await Promise.all([
     getSetting('profile'), getSetting('profile_summary'), getSetting('filter_learning'), getSetting('fit_state'), getSetting('targeting'), getSetting('trading'),
   ]);
-  const ctx = { profile, summary, filterLearning, targeting, trading };
+  const stock = await loadStockForMatch().catch(() => undefined);
+  const ctx = { profile, summary, filterLearning, targeting, trading, stock };
   const hash = tradingHash(trading);
   const changed = (summary.generated_at || null) !== (state.profile_at || null)
     || (filterLearning.generated_at || null) !== (state.filters_at || null)

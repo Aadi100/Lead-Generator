@@ -106,6 +106,19 @@ Safety rules the worker always enforces: nothing is sent unless you pressed Send
 | Reminders - Follow up and keep moving | Hourly: makes a task for every lead pitched 3+ days ago with no reply (and no email sequence running), and a high-priority task for every lead that replied 2+ days ago and went quiet |
 | Capture - Send anything to Lead Radar | `POST http://localhost:5678/webhook/capture` with `{"text": "...", "url": "...", "kind": "trade"}` or `{"items": [...]}`. The worker reads it like the Capture page, so a phone shortcut or another tool can send leads in |
 
+### More worker sources (added later)
+
+| Source | Where it looks | Key needed | Status |
+|---|---|---|---|
+| Indie Hackers | Posts asking for developers or designers, found with Google search through Serper (indiehackers.com blocks direct reading: Cloudflare returns 403 and there is no public feed) | Serper | Needs key |
+| Product Hunt prospects | New launches from the public Atom feed (works with no key); an optional developer token (Connections) also checks each product's website. These are **Outbound prospects**, not buyers | Optional token | Works today |
+| LinkedIn jobs and posts | `site:linkedin.com/jobs` and `site:linkedin.com/posts` Google queries through Serper using your Targeting keywords. LinkedIn is never fetched directly | Serper | Needs key |
+| Upwork | Your saved-search alert emails read from your inbox (no scraping, no API approval needed) | Inbox (IMAP) | Needs inbox |
+| Fiverr requests | Fiverr buyer requests are logged-in only, so they are not fetched. Public "looking for a freelancer" posts are found through Serper. Open a request in your own browser and use the **Capture** bookmark (it now reads Fiverr and Upwork pages) to add real ones | Serper (discovery only) | Needs key |
+| Google Places prospects | Optional: Serper `places` search for your cities and niches (Settings > Prospecting), keeping businesses with no or a broken website. Google Maps itself is never scraped; OpenStreetMap prospecting stays the free default | Serper | Needs key |
+
+Each one has a Run now button on the Sources page and a switch in Settings > Connections (Prospecting for Places). They run on staggered schedules (3 h to 24 h) and show "Needs key" until the key exists.
+
 ### Sources that need keys now live in the worker
 
 Google search (Serper), X, the Reddit API, Discord and Upwork alerts are configured in the dashboard under **Settings > Connections**, not in n8n. The old `[KEY]` n8n workflows were replaced by those worker sources and renamed `ZZ Replaced - delete me` in n8n. You can delete them there.

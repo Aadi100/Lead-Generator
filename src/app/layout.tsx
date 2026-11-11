@@ -10,11 +10,16 @@ const mono = Fira_Code({ subsets: ['latin'], weight: ['400', '500', '600'], vari
 export const metadata: Metadata = {
   title: 'Lead Radar',
   description: 'Find, win and manage leads for web, app, design and game-trading work',
+  applicationName: 'Lead Radar',
+  icons: { icon: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }], apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180' }] },
+  appleWebApp: { capable: true, title: 'Lead Radar', statusBarStyle: 'black-translucent' },
+  other: { 'mobile-web-app-capable': 'yes' },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#F8FAFC' },
     { media: '(prefers-color-scheme: dark)', color: '#0B1220' },

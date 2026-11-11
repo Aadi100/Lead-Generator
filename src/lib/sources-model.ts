@@ -1,6 +1,6 @@
 // Sources module: which lead sources exist, how leads are matched to them and how their health is judged.
 // Pure functions only (no React, no Supabase) so the rules stay in one readable place.
-import type { IntegrationsSettings, JobType, TradingSettings, WorkerStatus } from './types';
+import type { IntegrationName, IntegrationStatus, IntegrationsSettings, JobType, TradingSettings, WorkerStatus } from './types';
 
 export const WORKER_OFFLINE_MS = 40_000;
 export const N8N_OFFLINE_MS = 15 * 60_000;
@@ -30,7 +30,7 @@ export type SourceContext = {
   workerOnline: boolean;
   integrations: IntegrationsSettings;
   trading: TradingSettings;
-  prospecting: { enabled: boolean; last_run: string | null; last_result: string | Record<string, unknown> | null };
+  prospecting: { enabled: boolean; last_run: string | null; last_result: string | Record<string, unknown> | null; cities: string[]; places_enabled: boolean; places_niches: string[] };
   imapReady: boolean;
   tradeState: { discord: Record<string, string>; reddit_last_run: string | null; subs_ok: string[] };
 };
@@ -48,6 +48,8 @@ export type SourceDef = {
   /** Leads older than this many hours make the source "Quiet". Omit for sources that only fire when someone acts. */
   quietAfterH?: number;
   job?: { type: JobType; label: string };
+  /** Key under integrations.status where the worker writes its last run summary. */
+  statusKey?: IntegrationName;
   configure: { href: string; label: string };
   /** Reason a key or setup step is missing, or null when everything needed is present. */
   needsKey?: (c: SourceContext) => string | null;
@@ -64,7 +66,7 @@ const subOf = (l: LeadRow) => (l.source_detail ?? '').replace(/^r\//i, '').toLow
 const src = (l: LeadRow) => (l.source ?? '').trim().toLowerCase();
 const isTrade = (l: LeadRow) => l.lead_kind === 'trade';
 
-function integrationProblem(c: SourceContext, name: keyof IntegrationsSettings['status']): string | null {
+function integrationProblem(c: SourceContext, name: IntegrationName): string | null {
   const st = c.integrations.status[name];
   if (st && st.ok === false) return st.message || 'The last connection test failed.';
   return null;
@@ -180,6 +182,80 @@ export const SOURCES: SourceDef[] = [
     off: (c) => (c.prospecting.enabled ? null : 'Local prospecting is switched off.'),
   },
   {
+    id: 'indiehackers',
+    name: 'Indie Hackers',
+    kind: 'worker',
+    schedule: 'Every 12 h',
+    hint: 'Posts asking for developers or designers. Indie Hackers blocks direct reading, so this goes through Google (Serper).',
+    match: (l) => src(l) === 'indie hackers' || (l.source_detail ?? '').toLowerCase().startsWith('found via google (indie hackers'),
+    quietAfterH: 24 * 5,
+    job: { type: 'source_indiehackers', label: 'Run now' },
+    statusKey: 'indiehackers',
+    configure: { href: '/settings?tab=connections', label: 'Connections' },
+    needsKey: (c) => (c.integrations.serper.api_key ? null : 'Add your Serper API key (Indie Hackers is read through Google).'),
+    off: (c) => (c.integrations.serper.enabled && c.integrations.serper.indiehackers ? null : 'Switched off in Connections.'),
+    problem: (c) => integrationProblem(c, 'indiehackers'),
+  },
+  {
+    id: 'linkedin',
+    name: 'LinkedIn jobs and posts',
+    kind: 'worker',
+    schedule: 'Every 8 h',
+    hint: 'Contract jobs and "looking for" posts found through Google (Serper). LinkedIn itself is never opened.',
+    match: (l) => src(l) === 'linkedin',
+    quietAfterH: 24 * 5,
+    job: { type: 'source_linkedin', label: 'Run now' },
+    statusKey: 'linkedin',
+    configure: { href: '/settings?tab=connections', label: 'Connections' },
+    needsKey: (c) => (c.integrations.serper.api_key ? null : 'Add your Serper API key (LinkedIn is read through Google only).'),
+    off: (c) => (c.integrations.serper.enabled && c.integrations.serper.linkedin ? null : 'Switched off in Connections.'),
+    problem: (c) => integrationProblem(c, 'linkedin'),
+  },
+  {
+    id: 'fiverr',
+    name: 'Fiverr requests',
+    kind: 'worker',
+    schedule: 'Every 12 h',
+    hint: 'Fiverr buyer requests are private, so they are not fetched. This finds public "looking for a freelancer" posts through Google (Serper). Add real Fiverr buyer requests with the Capture bookmark.',
+    match: (l) => src(l) === 'fiverr' || (l.source_detail ?? '').toLowerCase().startsWith('found via google (fiverr'),
+    quietAfterH: 24 * 7,
+    job: { type: 'source_fiverr', label: 'Run now' },
+    statusKey: 'fiverr',
+    configure: { href: '/capture', label: 'Capture' },
+    needsKey: (c) => (c.integrations.serper.api_key ? null : 'Add your Serper API key for public Fiverr-style posts. Requests you capture by hand work without it.'),
+    off: (c) => (c.integrations.serper.enabled && c.integrations.serper.fiverr ? null : 'Switched off in Connections.'),
+    problem: (c) => integrationProblem(c, 'fiverr'),
+  },
+  {
+    id: 'producthunt',
+    name: 'Product Hunt prospects',
+    kind: 'worker',
+    schedule: 'Every 3 h',
+    hint: 'Outbound prospects: new launches by makers who might want a better site, app or design. They did not ask for help.',
+    match: (l) => src(l) === 'product hunt',
+    quietAfterH: 24 * 4,
+    job: { type: 'source_producthunt', label: 'Run now' },
+    statusKey: 'producthunt',
+    configure: { href: '/settings?tab=connections', label: 'Connections' },
+    off: (c) => (c.integrations.producthunt.enabled ? null : 'Switched off in Connections.'),
+    problem: (c) => integrationProblem(c, 'producthunt'),
+  },
+  {
+    id: 'places',
+    name: 'Google Places prospects',
+    kind: 'worker',
+    schedule: 'Every 24 h',
+    hint: 'Outbound prospects: local businesses with no website or a broken one, found through Serper places.',
+    match: (l) => src(l) === 'google places',
+    quietAfterH: 24 * 5,
+    job: { type: 'prospect_places', label: 'Find now' },
+    statusKey: 'places',
+    configure: { href: '/settings?tab=prospecting', label: 'Prospecting' },
+    needsKey: (c) => (c.integrations.serper.api_key ? null : 'Add your Serper API key.'),
+    off: (c) => (c.prospecting.places_enabled ? (c.prospecting.cities.length && c.prospecting.places_niches.length ? null : 'Add a city and a niche in Prospecting.') : 'Google Places is switched off in Prospecting.'),
+    problem: (c) => integrationProblem(c, 'places'),
+  },
+  {
     id: 'serper',
     name: 'Google (Serper)',
     kind: 'worker',
@@ -188,6 +264,7 @@ export const SOURCES: SourceDef[] = [
     match: (l) => (l.source_detail ?? '').toLowerCase() === 'found via google',
     quietAfterH: 48,
     configure: { href: '/settings?tab=connections', label: 'Connections' },
+    statusKey: 'serper',
     needsKey: (c) => (c.integrations.serper.api_key ? null : 'Add your Serper API key.'),
     off: (c) => (c.integrations.serper.enabled ? null : 'Switched off in Connections.'),
     problem: (c) => integrationProblem(c, 'serper'),
@@ -226,7 +303,8 @@ export const SOURCES: SourceDef[] = [
     hint: 'Upwork saved-search emails read from your inbox.',
     match: (l) => src(l) === 'upwork',
     quietAfterH: 72,
-    job: { type: 'check_replies', label: 'Check inbox' },
+    job: { type: 'source_upwork', label: 'Check inbox' },
+    statusKey: 'upwork_inbox',
     configure: { href: '/settings?tab=connections', label: 'Connections' },
     needsKey: (c) => (c.imapReady ? null : 'Connect your inbox under Reply tracking first.'),
     off: (c) => (c.integrations.upwork_inbox.enabled ? null : 'Switched off in Connections.'),
@@ -264,6 +342,8 @@ export type SourceRow = {
   stats: SourceStats;
   status: SourceStatus;
   reason: string;
+  /** Last run summary written by the worker, if any. */
+  lastRun: IntegrationStatus | null;
 };
 
 export function classify(l: LeadRow): string {
@@ -333,7 +413,7 @@ export function buildRows(leads: LeadRow[], c: SourceContext): SourceRow[] {
   const stats = computeStats(leads, c.now);
   return SOURCES.map((def) => {
     const s = stats[def.id] ?? EMPTY_STATS;
-    return { def, stats: s, ...judge(def, s, c) };
+    return { def, stats: s, ...judge(def, s, c), lastRun: (def.statusKey && c.integrations.status[def.statusKey]) || null };
   });
 }
 

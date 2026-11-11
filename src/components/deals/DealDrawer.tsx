@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useEffect, useId, useState } from 'react';
 import { useShell } from '@/components/AppShell';
 import { Button, Drawer, Field, Input, Modal, SegmentedControl, Select, StatusBadge, Textarea } from '@/components/ui';
@@ -176,9 +177,16 @@ export default function DealDrawer({
         footer={
           <div className="flex flex-wrap items-center justify-between gap-2">
             {deal ? (
-              <Button variant="danger" onClick={() => setConfirmDelete(true)} disabled={saving}>
-                Delete
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="danger" onClick={() => setConfirmDelete(true)} disabled={saving}>
+                  Delete
+                </Button>
+                {deal.kind === 'service' && (
+                  <Link href={`/proposals?new=1&deal=${encodeURIComponent(deal.id)}`} className="btn inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-ctl border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2 coarse:min-h-11">
+                    Create proposal
+                  </Link>
+                )}
+              </div>
             ) : (
               <span />
             )}

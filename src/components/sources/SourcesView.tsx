@@ -33,6 +33,11 @@ function Name({ row }: { row: SourceRow }) {
     <div className="min-w-0">
       <p className="font-medium text-fg">{row.def.name}</p>
       <p className="mt-0.5 max-w-[34ch] text-xs text-fg-subtle">{row.status === 'healthy' || row.status === 'quiet' ? row.def.hint : row.reason}</p>
+      {row.lastRun?.ok && row.lastRun.checked_at && row.lastRun.message && (
+        <p className="mt-0.5 max-w-[34ch] text-xs text-fg-muted">
+          Last run {timeAgo(row.lastRun.checked_at)}: {row.lastRun.message.replace(/^Working[^.]*\.\s*(Last run:\s*)?/i, '')}
+        </p>
+      )}
     </div>
   );
 }

@@ -29,6 +29,7 @@ import { BarList, Banner, Button, Card, CountUp, EmptyState, FunnelChart, JobNot
 import { AnalyticsIcon, RefreshIcon, SparkIcon } from '@/components/Icons';
 import TimeBars from '@/components/analytics/TimeBars';
 import PerfTable from '@/components/analytics/PerfTable';
+import WhatWinsPanel from '@/components/analytics/WhatWinsPanel';
 
 type By = 'source' | 'category';
 
@@ -347,6 +348,10 @@ function AnalyticsView() {
           </Card>
         </Reveal>
       </div>
+
+      <Reveal className="mt-4">
+        <WhatWinsPanel />
+      </Reveal>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Reveal>

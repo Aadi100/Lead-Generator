@@ -6,7 +6,8 @@ import { budgetLabel, displayDate, isFlagged, timeAgo } from '@/lib/format';
 import { outreachChip } from '@/lib/outreach';
 import { Badge, CategoryChip, Checkbox, TrustBadge, cx } from '@/components/ui';
 import { AlertIcon } from '@/components/Icons';
-import { FitBadge, StatusDot } from './LeadBits';
+import type { AlsoSeenChip } from '@/lib/lead-identity';
+import { AlsoSeenBadge, FitBadge, StatusDot } from './LeadBits';
 
 type Props = {
   lead: Lead;
@@ -16,11 +17,12 @@ type Props = {
   checked: boolean;
   cursor: boolean;
   fresh: boolean;
+  alsoSeen?: AlsoSeenChip | null;
   onOpen: (id: string) => void;
   onCheck: (id: string, value: boolean) => void;
 };
 
-function LeadGridCardImpl({ lead, now, outreach, selected, checked, cursor, fresh, onOpen, onCheck }: Props) {
+function LeadGridCardImpl({ lead, now, outreach, selected, checked, cursor, fresh, alsoSeen, onOpen, onCheck }: Props) {
   const flagged = isFlagged(lead);
   const budget = budgetLabel(lead);
   const chip = outreachChip(outreach);
@@ -48,6 +50,7 @@ function LeadGridCardImpl({ lead, now, outreach, selected, checked, cursor, fres
           <span className="text-xs font-medium text-fg-muted">{lead.status}</span>
           {lead.category && <CategoryChip category={lead.category} />}
           {fresh && <Badge tone="primary">New</Badge>}
+          {alsoSeen && <AlsoSeenBadge chip={alsoSeen} />}
           {flagged && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-danger">
               <AlertIcon className="h-3.5 w-3.5" aria-hidden="true" />

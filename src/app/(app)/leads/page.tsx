@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { STATUSES, type Lead, type Status, type StatusTab } from '@/lib/types';
 import { isFlagged, normalizeLead, truncate } from '@/lib/format';
 import { enqueueJob, waitForJob } from '@/lib/jobs';
-import { groupByLead, recordOutcome, sentTodayCount, useOutreach } from '@/lib/outreach';
+import { groupByLead, recordOutcome, sentTodayCount, useOutreach, useReplies } from '@/lib/outreach';
+import { chipFor, useLeadLinks, type AlsoSeenChip } from '@/lib/lead-identity';
 import {
   hasActiveFilters,
   isServiceLead,
@@ -61,6 +62,8 @@ function isTypingTarget(t: EventTarget | null): boolean {
 function LeadsView() {
   const { pushToast, sending, workerOnline } = useShell();
   const outreach = useOutreach();
+  const replies = useReplies();
+  const identity = useLeadLinks();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -322,6 +325,24 @@ function LeadsView() {
 
   // ---- derived data ----
   const outreachByLead = useMemo(() => groupByLead(outreach.rows), [outreach.rows]);
+  const leadsById = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads]);
+  const alsoSeen = useMemo(() => {
+    const m = new Map<string, AlsoSeenChip>();
+    leads.forEach((l) => {
+      const c = chipFor(identity.groups.get(l.id), leadsById, l);
+      if (c) m.set(l.id, c);
+    });
+    return m;
+  }, [leads, leadsById, identity.groups]);
+  const repliesByLead = useMemo(() => {
+    const m = new Map<string, typeof replies.rows>();
+    [...replies.rows]
+      .sort((a, b) => new Date(b.received_at ?? b.created_at).getTime() - new Date(a.received_at ?? a.created_at).getTime())
+      .forEach((r) => {
+        if (r.lead_id) m.set(r.lead_id, [...(m.get(r.lead_id) ?? []), r]);
+      });
+    return m;
+  }, [replies.rows]);
   const sentToday = useMemo(() => sentTodayCount(outreach.rows), [outreach.rows]);
 
   const kindCounts = useMemo(() => {
@@ -499,6 +520,9 @@ function LeadsView() {
         onLeadPatch={handleLeadPatch}
         onReload={() => void outreach.reload()}
         pushToast={pushToast}
+        identity={{ info: identity.groups.get(selectedLead.id), leadsById, outreachByLead, decide: identity.decide }}
+        replies={repliesByLead.get(selectedLead.id) ?? []}
+        onRepliesReload={() => void replies.reload()}
       />
     );
 
@@ -514,6 +538,7 @@ function LeadsView() {
     checked: checked.has(lead.id),
     cursor: cursor === lead.id,
     fresh: freshIds.has(lead.id),
+    alsoSeen: alsoSeen.get(lead.id) ?? null,
     onOpen: openLead,
     onCheck: toggleChecked,
   });

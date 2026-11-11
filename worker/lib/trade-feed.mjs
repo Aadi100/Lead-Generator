@@ -35,7 +35,7 @@ export function parseRedditAtom(xml) {
 }
 
 // Turns one public post into a lead row (or null when it is not a real trade post).
-export function buildTradeLead(post, { trading = {}, gameIndex } = {}) {
+export function buildTradeLead(post, { trading = {}, gameIndex, stock } = {}) {
   const index = gameIndex || gameIndexFor(trading);
   const parsed = parseTradePost({ title: post.title, body: post.body, subreddit: post.subreddit }, index);
   if (!parsed.keep) return null;
@@ -67,7 +67,7 @@ export function buildTradeLead(post, { trading = {}, gameIndex } = {}) {
     item_type: parsed.item_type,
     enrich_status: 'skipped',
   };
-  const match = matchTrade(lead, trading, index);
+  const match = matchTrade(lead, trading, index, stock);
   lead.trade_match = match ? match.label : null;
   lead.alerted_at = match ? null : new Date().toISOString();
   return lead;

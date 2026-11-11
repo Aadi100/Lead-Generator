@@ -13,6 +13,8 @@ const MARKETPLACES = [
   ['eldorado.gg', 'Eldorado'], ['g2g.com', 'G2G'], ['z2u.com', 'Z2U'], ['funpay.com', 'FunPay'], ['playerauctions.com', 'PlayerAuctions'],
   ['gameboost.com', 'GameBoost'], ['u7buy.com', 'U7Buy'], ['itemku.com', 'Itemku'], ['playerup.com', 'PlayerUp'], ['elitepvpers.com', 'ElitePvPers'],
 ];
+// Freelance sites: leads captured here are work requests (not game trades), named after the site.
+const FREELANCE_SITES = [['fiverr.com', 'Fiverr'], ['upwork.com', 'Upwork']];
 const CHATS = [['discord.com', 'Discord'], ['discordapp.com', 'Discord'], ['web.telegram.org', 'Telegram'], ['telegram.org', 'Telegram'], ['t.me', 'Telegram']];
 const WANT_RE = /\b(wtb|want to buy|looking for|lf|wanted|buying|in need of)\b/i;
 const RATING_RE = /(\d(?:\.\d+)?)\s*(?:\/\s*5|★|stars?)?\s*[,|·-]\s*(\d[\d,.]*\s?k?)\s*(sales|orders|reviews?|feedbacks?|sold)/i;
@@ -39,9 +41,10 @@ export function describeItem(item, { sourceLabel } = {}) {
   const rating = marketBrand ? RATING_RE.exec(text) : null;
   const authorInfo = rating ? `${rating[1]} rating · ${rating[2].trim()} ${rating[3].toLowerCase()}` : null;
   const body = [text, item?.page_title && `Page: ${clip(item.page_title, 200)}`, item?.price_text && `Price: ${clip(item.price_text, 60)}`].filter(Boolean).join('\n');
-  const source = marketBrand || chatBrand || clip(sourceLabel, 60) || host || 'Manual';
+  const freelanceBrand = marketBrand || chatBrand ? null : brandFor(host, FREELANCE_SITES);
+  const source = marketBrand || chatBrand || freelanceBrand || clip(sourceLabel, 60) || host || 'Manual';
   const channel = clip(item?.channel_label, 80);
-  const sourceDetail = marketBrand ? 'Captured from page' : channel || 'Captured by hand';
+  const sourceDetail = marketBrand || freelanceBrand ? 'Captured from page' : channel || 'Captured by hand';
   const contact = author && chatBrand ? `${chatBrand.toLowerCase()}: ${author}` : author && marketBrand ? `${marketBrand.toLowerCase()}: ${author}` : null;
   const url = isHttp(item?.url) ? String(item.url).trim() : stableUrl(text);
   return { text, title, body, author, authorInfo, source, sourceDetail, contact, url, marketplace: !!marketBrand, chat: chatBrand };
@@ -85,7 +88,7 @@ function tradeLead(d, ctx) {
     enrich_status: 'skipped',
     alerted_at: ctx.nowIso,
   };
-  const match = matchTrade(lead, ctx.trading, ctx.gameIndex);
+  const match = matchTrade(lead, ctx.trading, ctx.gameIndex, ctx.stock);
   lead.trade_match = match ? match.label : null;
   return { found: true, lead, meta: { kind: 'trade', game: lead.game, item_type: lead.item_type, side, trade_match: lead.trade_match, trust: lead.trust_score } };
 }
@@ -126,12 +129,12 @@ export function processItem(item, ctx) {
 }
 
 // deps: { existingUrls(urls) -> Set, insert(rows) -> count }. No network, no logging of item text.
-export async function runQuickAdd(payload, { trading = {}, targeting = {}, existingUrls, insert, now = () => new Date() }) {
+export async function runQuickAdd(payload, { trading = {}, targeting = {}, stock, existingUrls, insert, now = () => new Date() }) {
   const items = Array.isArray(payload?.items) ? payload.items : [];
   if (!items.length) throw new Error('Nothing to add. Paste some text first.');
   if (items.length > MAX_ITEMS) throw new Error(`Send at most ${MAX_ITEMS} items at a time.`);
   const forceKind = payload?.force_kind === 'trade' ? 'trade' : payload?.force_kind === 'request' || payload?.force_kind === 'service' ? 'request' : null;
-  const ctx = { trading, gameIndex: gameIndexFor(trading), scorer: createScorer(targeting), sourceLabel: payload?.source_label, forceKind, nowIso: now().toISOString() };
+  const ctx = { trading, stock, gameIndex: gameIndexFor(trading), scorer: createScorer(targeting), sourceLabel: payload?.source_label, forceKind, nowIso: now().toISOString() };
 
   const out = new Array(items.length);
   const candidates = [];

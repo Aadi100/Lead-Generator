@@ -21,7 +21,7 @@ export function tradeQueries(trading = {}, max = 8) {
   return out.slice(0, max);
 }
 
-const sourceOf = (link) => {
+export const sourceOf = (link) => {
   const host = (link.match(/^https?:\/\/([^/]+)/) || [])[1] || '';
   return (SRC.find(([re]) => re.test(host)) || [null, 'Web'])[1];
 };

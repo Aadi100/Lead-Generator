@@ -3,6 +3,7 @@
 import type { OutreachWithLead, ReplyWithLead } from '@/lib/outreach';
 import { OUTREACH_STATUS_LABEL, stepLabel } from '@/lib/outreach';
 import { REPLY_CATEGORY, replyDisplayName } from '@/lib/outbox-model';
+import { ASSIST_CATEGORY } from '@/lib/reply-assist';
 import { fmtDateTime, timeAgo, timeUntil, truncate } from '@/lib/format';
 import { AlertIcon } from '../Icons';
 import { Badge, cx } from '../ui';
@@ -86,6 +87,12 @@ export function ReplyListItem({ reply, now, selected, onSelect }: { reply: Reply
       </span>
       <span className="mt-1 flex flex-wrap items-center gap-1.5">
         <Badge tone={cat.tone}>{cat.label}</Badge>
+        {reply.assist && reply.assist.classification !== 'out_of_office' && (
+          <Badge tone={ASSIST_CATEGORY[reply.assist.classification].tone} title="What the reply assistant thinks they want">
+            {ASSIST_CATEGORY[reply.assist.classification].label}
+          </Badge>
+        )}
+        {reply.assist?.draft_outreach_id && <Badge tone="primary">Draft ready</Badge>}
         {reply.handled && <Badge>Handled</Badge>}
       </span>
       <span className="mt-1 block truncate text-[13px] text-fg-subtle">{replyDisplayName(reply)}</span>

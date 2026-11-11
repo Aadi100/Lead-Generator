@@ -14,6 +14,7 @@ import { Banner, Button, Card, EmptyState, SkeletonRows, Stagger, Tabs } from '@
 import { ChevronLeftIcon, InboxIcon, MailIcon, PauseIcon, SendIcon } from '@/components/Icons';
 import { OutreachListItem, ReplyListItem } from '@/components/outbox/OutboxList';
 import { OutreachPreview, ReplyPreview } from '@/components/outbox/OutboxPreview';
+import ReplyAssistCard from '@/components/outbox/ReplyAssistCard';
 import { ConfirmCancelModal, CreateTaskModal } from '@/components/outbox/OutboxDialogs';
 import DailyLimitMeter from '@/components/outbox/DailyLimitMeter';
 
@@ -326,6 +327,26 @@ function OutboxView() {
                   onHandled={(r) => void markHandled(r)}
                   onLeadStatus={(r, s) => void setLeadStatus(r, s)}
                   onCreateTask={setTaskFor}
+                  assist={
+                    selectedReply.lead_id ? (
+                      <ReplyAssistCard
+                        key={`${selectedReply.id}-${selectedReply.assist?.generated_at ?? selectedReply.assist_status ?? 'none'}`}
+                        reply={selectedReply}
+                        lead={selectedReply.lead}
+                        draft={rows.find((r) => r.reply_to_id === selectedReply.id) ?? null}
+                        sending={sending}
+                        sentToday={sentToday}
+                        workerOnline={workerOnline}
+                        onReload={() => {
+                          void outreach.reload();
+                          void replies.reload();
+                        }}
+                        onHandled={() => void markHandled(selectedReply)}
+                        onLeadStatus={(s) => void setLeadStatus(selectedReply, s)}
+                        pushToast={pushToast}
+                      />
+                    ) : undefined
+                  }
                 />
               )}
             </Card>
