@@ -3,14 +3,15 @@
 import { useState } from 'react';
 import { useSettingForm } from '@/lib/settings';
 import { useJob } from '@/lib/jobs';
-import { emailError, webhookError } from '@/lib/settings-validate';
+import { emailError } from '@/lib/settings-validate';
 import { useShell } from '../AppShell';
 import { SendIcon } from '../Icons';
 import { Card, Field, JobNote, Spinner, Toggle, btnSecondary, inputCls, pill } from '../ui';
+import Advanced from './Advanced';
 import SaveBar from './SettingsSaveBar';
 import SecretInput from './SecretInput';
 
-type Channel = 'all' | 'discord' | 'telegram' | 'email' | 'whatsapp';
+type Channel = 'all' | 'email' | 'whatsapp';
 
 export default function AlertsTab() {
   const { pushToast } = useShell();
@@ -43,15 +44,17 @@ export default function AlertsTab() {
 
   return (
     <div className="space-y-4">
-      <Card title="Instant alerts" subtitle="Get a message the moment a strong lead arrives, so you can reply first.">
+      <Card title="Instant alerts" subtitle="Switch on, then add at least one place to get them below.">
         {form.loading ? (
           <p className="text-sm text-fg-subtle">Loading…</p>
         ) : (
           <div className="space-y-4">
             <Toggle id="al-on" checked={a.enabled} onChange={(v) => form.patch({ enabled: v })} label="Send me alerts" />
 
+            <Toggle id="al-reply" checked={a.on_reply} onChange={(v) => form.patch({ on_reply: v })} label="Also alert me when someone replies" />
+            <Advanced id="alerts" hint="Only alert for leads that look real, and skip leads marked Be careful.">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Only alert when trust is at least" htmlFor="al-trust" hint="From 0 to 100. 70 means High trust only.">
+              <Field label="Only alert for leads that look real (0 to 100)" htmlFor="al-trust" hint="70 means only leads that look real.">
                 <input
                   id="al-trust"
                   type="number"
@@ -67,11 +70,11 @@ export default function AlertsTab() {
                   id="al-safe"
                   checked={a.only_non_suspicious}
                   onChange={(v) => form.patch({ only_non_suspicious: v })}
-                  label="Skip suspicious leads"
+                  label="Skip leads marked Be careful"
                 />
-                <Toggle id="al-reply" checked={a.on_reply} onChange={(v) => form.patch({ on_reply: v })} label="Also alert me when someone replies" />
               </div>
             </div>
+            </Advanced>
           </div>
         )}
         <SaveBar dirty={form.dirty} saving={form.saving} onSave={() => void save()} onReset={form.reset} error={form.error} />
@@ -79,60 +82,19 @@ export default function AlertsTab() {
 
       {!form.loading && (
         <>
-          <Card title="Discord" subtitle="Free, and it works on networks where Telegram is blocked. Recommended.">
-            <Field label="Webhook address" htmlFor="dc-hook" hint="It starts with https://discord.com/api/webhooks/" error={touched.hook ? webhookError(a.discord.webhook_url) : null}>
-              <SecretInput
-                onBlur={blur('hook')}
-                id="dc-hook"
-                autoComplete="off"
-                value={a.discord.webhook_url}
-                onChange={(e) => form.patch({ discord: { webhook_url: e.target.value.trim() } })}
-              />
-            </Field>
-            <ol className="mt-3 list-decimal space-y-1 pl-5 text-xs text-fg-subtle">
-              <li>Make a private Discord server just for yourself, or use one you own. Install the Discord app on your phone to get the alerts there.</li>
-              <li>Open Server Settings, then Integrations, then Webhooks, then New Webhook. Pick the channel for the alerts.</li>
-              <li>Press Copy Webhook URL and paste it above.</li>
-            </ol>
-          </Card>
-
-          <Card title="Telegram" subtitle="Free and fast, but Telegram is blocked on some networks. If the test fails, use Discord or email.">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Bot token" htmlFor="tg-token">
-                <SecretInput
-                  id="tg-token"
-                  autoComplete="off"
-                  value={a.telegram.bot_token}
-                  onChange={(e) => form.patch({ telegram: { ...a.telegram, bot_token: e.target.value } })}
-                />
-              </Field>
-              <Field label="Chat ID" htmlFor="tg-chat">
-                <input id="tg-chat" className={inputCls} value={a.telegram.chat_id} onChange={(e) => form.patch({ telegram: { ...a.telegram, chat_id: e.target.value } })} />
-              </Field>
-            </div>
-            <ol className="mt-3 list-decimal space-y-1 pl-5 text-xs text-fg-subtle">
-              <li>In Telegram, search for @BotFather and send /newbot. It gives you the bot token.</li>
-              <li>Open a chat with your new bot and send it any message.</li>
-              <li>
-                Open this address in your browser, with your token in place of TOKEN:{' '}
-                <span className="break-all font-mono">https://api.telegram.org/botTOKEN/getUpdates</span>. Your chat ID is the number after &quot;chat&quot;:{' '}
-                {'{"id":'}.
-              </li>
-            </ol>
-          </Card>
-
-          <Card title="Email" subtitle="Uses the email sending you set up in the Email sending tab.">
+          <Card title="Email" subtitle="Free and quick to set up. Recommended. Uses the email account you set up in the Email account tab.">
             <Field label="Send alerts to" htmlFor="al-email" error={touched.email ? emailError(a.email.to) : null}>
               <input id="al-email" type="email" className={inputCls} onBlur={blur('email')} value={a.email.to} onChange={(e) => form.patch({ email: { to: e.target.value } })} placeholder="you@example.com" />
             </Field>
           </Card>
 
+          <Advanced id="alerts-more" title="Show more ways to get alerts" hint="WhatsApp. Optional.">
           <Card title="WhatsApp" subtitle="Free through CallMeBot. Setup takes about two minutes.">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Your WhatsApp number" htmlFor="wa-phone" hint="With country code, for example +923001234567.">
                 <input id="wa-phone" className={inputCls} value={a.whatsapp.phone} onChange={(e) => form.patch({ whatsapp: { ...a.whatsapp, phone: e.target.value } })} />
               </Field>
-              <Field label="CallMeBot API key" htmlFor="wa-key">
+              <Field label="CallMeBot key" htmlFor="wa-key">
                 <SecretInput
                   id="wa-key"
                   autoComplete="off"
@@ -141,10 +103,12 @@ export default function AlertsTab() {
                 />
               </Field>
             </div>
-            <p className="mt-2 text-xs text-fg-subtle">
+            <p className="mt-2 text-sm text-fg-muted">
               Follow the short setup steps on callmebot.com for WhatsApp. It gives you the API key after you send its bot one message.
             </p>
           </Card>
+
+          </Advanced>
 
           <Card title="Send a test alert">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -152,8 +116,6 @@ export default function AlertsTab() {
                 <Field label="Where to test" htmlFor="al-channel">
                   <select id="al-channel" className={inputCls} value={channel} onChange={(e) => setChannel(e.target.value as Channel)}>
                     <option value="all">Every channel I set up</option>
-                    <option value="discord">Discord</option>
-                    <option value="telegram">Telegram</option>
                     <option value="email">Email</option>
                     <option value="whatsapp">WhatsApp</option>
                   </select>

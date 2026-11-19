@@ -6,6 +6,7 @@ import { useShell } from '@/components/AppShell';
 import { Button, Drawer, Field, Input, Modal, SegmentedControl, Select, StatusBadge, Textarea } from '@/components/ui';
 import { XIcon } from '@/components/Icons';
 import { supabase } from '@/lib/supabaseClient';
+import { STAGE_HINT } from '@/lib/deals-data';
 import { DEAL_STAGES, DEAL_STAGE_LABEL, type Deal, type DealStage } from '@/lib/types-platform';
 import { EMPTY_INPUT, createDeal, deleteDeal, inputFromDeal, profitOf, searchLeads, updateDeal, validateInput, money, type DealInput } from '@/lib/deals-data';
 
@@ -263,8 +264,8 @@ export default function DealDrawer({
             </div>
           )}
 
-          <Field label="Platform" htmlFor={`${uid}-plat`} hint="Where the deal happens: Discord, Reddit, Eldorado, Upwork and so on.">
-            <Input id={`${uid}-plat`} value={form.platform} onChange={(e) => set('platform', e.target.value)} placeholder="Upwork, Discord, Reddit..." />
+          <Field label="Platform" htmlFor={`${uid}-plat`} hint="Where the deal happens: Reddit, Eldorado, Upwork and so on.">
+            <Input id={`${uid}-plat`} value={form.platform} onChange={(e) => set('platform', e.target.value)} placeholder="Upwork, Reddit, Eldorado..." />
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-3">
@@ -285,7 +286,7 @@ export default function DealDrawer({
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Stage" htmlFor={`${uid}-stage`} hint={form.lead_id && (form.stage === 'done' || form.stage === 'cancelled') ? `Saving will mark the linked lead ${form.stage === 'done' ? 'Won' : 'Lost'}.` : undefined}>
+            <Field label="Stage" htmlFor={`${uid}-stage`} hint={form.lead_id && (form.stage === 'done' || form.stage === 'cancelled') ? `Saving will mark the linked lead ${form.stage === 'done' ? 'Won' : 'Lost'}.` : STAGE_HINT[form.stage]}>
               <Select id={`${uid}-stage`} value={form.stage} onChange={(e) => set('stage', e.target.value as DealStage)}>
                 {DEAL_STAGES.map((s) => (
                   <option key={s} value={s}>

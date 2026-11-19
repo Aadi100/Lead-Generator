@@ -8,12 +8,11 @@ export const INTEGRATION_DEFAULTS = {
   producthunt: { enabled: true, token: '' },
   x: { enabled: false, bearer_token: '' },
   reddit_api: { enabled: false, client_id: '', client_secret: '', username: '' },
-  discord: { bot_token: '' },
   upwork_inbox: { enabled: false },
   status: {},
 };
 
-export const LABELS = { serper: 'Google search (Serper)', x: 'X (Twitter)', reddit_api: 'Reddit API', discord: 'Discord', upwork_inbox: 'Upwork alerts', producthunt: 'Product Hunt', indiehackers: 'Indie Hackers', linkedin: 'LinkedIn', fiverr: 'Fiverr discovery', places: 'Google Places' };
+export const LABELS = { serper: 'Google search (Serper)', x: 'X (Twitter)', reddit_api: 'Reddit API', upwork_inbox: 'Upwork alerts', producthunt: 'Product Hunt', indiehackers: 'Indie Hackers', linkedin: 'LinkedIn', fiverr: 'Fiverr discovery', places: 'Google Places' };
 const HOUR = 3600 * 1000;
 
 export async function getIntegrations() {

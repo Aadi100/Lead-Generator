@@ -10,7 +10,7 @@ export function FunnelCard({ funnel }: { funnel: DashModel['funnel'] }) {
   const empty = funnel.found === 0;
   const winRate = funnel.pitched ? Math.round((funnel.won / funnel.pitched) * 100) : 0;
   return (
-    <Panel title="Pipeline" subtitle="Service leads, from found to won" href="/pipeline" linkLabel="Open pipeline">
+    <Panel title="Pipeline" subtitle="Found, then pitched (you contacted them), replied, won" href="/pipeline" linkLabel="Open pipeline">
       {empty ? (
         <PanelEmpty icon={<SparkIcon className="h-5 w-5" />} title="No leads in the pipeline yet" text="When leads arrive they move through Found, Pitched, Replied and Won here." action={<Link href="/capture" className={buttonClass('secondary', 'sm')}>Add a lead</Link>} />
       ) : (
@@ -104,13 +104,13 @@ export function LeadsPerDayCard({ data }: { data: DashModel['perDay'] }) {
 
 export function TopSourcesCard({ items }: { items: DashModel['topSources'] }) {
   return (
-    <Panel title="Top sources" subtitle="Leads found in the last 7 days" href="/sources" linkLabel="All sources">
+    <Panel title="Best lead sources" subtitle="Where most leads came from this week" href="/sources" linkLabel="All sources">
       {items.length === 0 ? (
-        <PanelEmpty icon={<SparkIcon className="h-5 w-5" />} title="No leads this week" text="Check Source health to see which feeds have gone quiet." />
+        <PanelEmpty icon={<SparkIcon className="h-5 w-5" />} title="No leads this week" text="Check Where leads come from to see which finders have gone quiet." />
       ) : (
         <BarList
           tone="primary"
-          items={items.map((s) => ({ label: s.name, value: s.count, sub: s.avgTrust != null ? `Average trust ${s.avgTrust}/100` : 'Not scored yet' }))}
+          items={items.map((s) => ({ label: s.name, value: s.count, sub: s.avgTrust != null ? (s.avgTrust >= 70 ? 'Mostly looks real' : s.avgTrust >= 40 ? 'Check first' : 'Be careful') : 'Not checked yet' }))}
         />
       )}
     </Panel>

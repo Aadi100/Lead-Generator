@@ -17,6 +17,7 @@ import { matchStock } from '../../../worker/lib/stock-match.mjs';
 import SellDialog from './SellDialog';
 import StockDrawer from './StockDrawer';
 import TradingNav from './TradingNav';
+import Advanced from '@/components/settings/Advanced';
 
 const TABS: StockStatus[] = ['in_stock', 'reserved', 'sold', 'archived'];
 
@@ -68,7 +69,7 @@ export default function StockBoard() {
     <div>
       <PageHeader
         title="Stock"
-        subtitle="What you hold to sell right now. Buyer matches only count items that are in stock here."
+        subtitle="What you have to sell right now."
         actions={
           <Button variant="primary" leftIcon={<PlusIcon className="h-4 w-4" />} onClick={() => setDrawer({ open: true, item: null })}>
             Add item
@@ -84,9 +85,12 @@ export default function StockBoard() {
       )}
 
       <Reveal>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Items in stock" value={summary.inStock} sub={summary.reserved ? `${summary.reserved} reserved` : 'Units ready to sell'} />
-          <StatTile label="Total ask value" value={money(summary.askValueUsd)} sub={summary.unpriced ? `${summary.unpriced} without a price` : 'In stock, at your asking prices'} />
+        <div className="grid grid-cols-2 gap-3">
+          <StatTile label="Items in stock" value={summary.inStock} sub={summary.reserved ? `${summary.reserved} reserved` : 'Ready to sell'} />
+          <StatTile label="Total ask value" value={money(summary.askValueUsd)} sub={summary.unpriced ? `${summary.unpriced} without a price` : 'At your asking prices'} />
+        </div>
+        <Advanced id="stock-numbers" title="Show more numbers" className="mt-3">
+        <div className="grid grid-cols-2 gap-3">
           <StatTile label="Sold this month" value={summary.soldMonth} sub="Units" />
           <StatTile
             label="Profit this month"
@@ -95,6 +99,7 @@ export default function StockBoard() {
             sub={summary.profitKnown ? 'From sales where you saved a cost' : 'Save what you paid to see profit'}
           />
         </div>
+        </Advanced>
       </Reveal>
 
       <div className="mt-4 rounded-card border border-border bg-surface p-3 shadow-sm">
@@ -124,7 +129,7 @@ export default function StockBoard() {
           <EmptyState
             icon={<CatalogIcon className="h-5 w-5" />}
             title="No stock yet"
-            text="Add the accounts, items or services you hold. Until you do, buyers are matched against your catalog. Once you add stock, only what is in stock here counts."
+            text="Add what you have to sell, and I will match it to buyers."
             action={
               <Button variant="primary" leftIcon={<PlusIcon className="h-4 w-4" />} onClick={() => setDrawer({ open: true, item: null })}>
                 Add your first item
@@ -188,12 +193,11 @@ function StockCard({ item: i, buyers, onEdit, onSell, onRelease, onArchive, onRe
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="break-words text-sm font-semibold leading-snug text-fg">{i.title}</p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <Badge tone="accent">{i.game}</Badge>
-            <Badge>{itemLabel(i.item_type)}</Badge>
-            {i.status === 'reserved' && <Badge tone="warning">Reserved</Badge>}
-            {i.status === 'sold' && <Badge tone="success">Sold</Badge>}
-          </div>
+          <p className="mt-1 text-xs text-fg-muted">
+            {i.game} · {itemLabel(i.item_type)} · {i.quantity} {i.quantity === 1 ? 'unit' : 'units'}
+            {i.status === 'reserved' && <Badge tone="warning" className="ml-2">Reserved</Badge>}
+            {i.status === 'sold' && <Badge tone="success" className="ml-2">Sold</Badge>}
+          </p>
         </div>
         <div className="shrink-0 text-right">
           <p className="font-num text-base font-semibold text-fg">{i.status === 'sold' ? fmtMoney(i.sold_price, i.currency) : fmtMoney(i.ask_price, i.currency)}</p>
@@ -201,7 +205,9 @@ function StockCard({ item: i, buyers, onEdit, onSell, onRelease, onArchive, onRe
         </div>
       </div>
 
-      <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
+      <details className="group mt-2.5 text-xs">
+        <summary className="inline-flex min-h-8 cursor-pointer items-center font-semibold text-primary-text">Show details</summary>
+      <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
         <div>
           <dt className="text-fg-subtle">Quantity</dt>
           <dd className="font-num font-semibold text-fg">{i.quantity}</dd>
@@ -232,6 +238,8 @@ function StockCard({ item: i, buyers, onEdit, onSell, onRelease, onArchive, onRe
           {i.description && <p className="line-clamp-2 text-xs text-fg-muted">{i.description}</p>}
         </div>
       )}
+
+      </details>
 
       <div className="mt-2.5 text-xs text-fg-subtle">
         {i.status === 'in_stock' && (buyers > 0 ? <Link href={`/trading/buyers?game=${encodeURIComponent(i.game)}`} className="font-medium text-primary-text hover:underline">{buyers} open {buyers === 1 ? 'buyer matches' : 'buyers match'} this</Link> : 'No open buyers match this right now')}

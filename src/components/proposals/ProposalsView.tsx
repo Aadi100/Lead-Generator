@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { PageContainer, PageHeader } from '@/components/shell';
 import { useShell } from '@/components/AppShell';
-import { Badge, Banner, Button, CountUp, EmptyState, Input, Reveal, SegmentedControl, Skeleton, SkeletonRows, StatTile, Stagger, Table, THead, Th, Tr, Td } from '@/components/ui';
+import { Badge, Banner, Button, EmptyState, Input, Reveal, SegmentedControl, Skeleton, SkeletonRows, Table, THead, Th, Tr, Td } from '@/components/ui';
 import { PlusIcon, SearchIcon } from '@/components/Icons';
 import { timeAgo } from '@/lib/format';
 import {
@@ -128,7 +128,7 @@ export default function ProposalsView() {
     <PageContainer>
       <PageHeader
         title="Proposals"
-        subtitle="Quotes you build from a lead or deal, as a clean one page PDF. Nothing is ever sent from here."
+        subtitle="Build a clear one-page quote for a client and download it as a PDF. Nothing is sent from here."
         actions={
           <Button variant="primary" leftIcon={<PlusIcon className="h-4 w-4" />} onClick={newBlank} loading={creating}>
             New proposal
@@ -143,19 +143,23 @@ export default function ProposalsView() {
       )}
 
       {loading ? (
-        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4" aria-busy="true">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-[98px] rounded-card" />
-          ))}
-        </div>
-      ) : (
-        <Stagger className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4" step={50}>
-          <StatTile label="Waiting on a reply" tone="primary" value={<CountUp value={sum('sent')} format={fmt} />} sub={`${count('sent')} sent`} />
-          <StatTile label="Accepted" tone="success" value={<CountUp value={sum('accepted')} format={fmt} />} sub={`${count('accepted')} proposal${count('accepted') === 1 ? '' : 's'}`} />
-          <StatTile label="Win rate" value={decided ? <CountUp value={Math.round((count('accepted') / decided) * 100)} format={(n) => `${Math.round(n)}%`} /> : <span>None yet</span>} sub="Accepted vs declined" />
-          <StatTile label="Drafts" value={<CountUp value={count('draft')} format={(n) => String(Math.round(n))} />} sub={money(sum('draft'), currency)} />
-        </Stagger>
-      )}
+        <Skeleton className="mb-5 h-12 rounded-card" />
+      ) : all.length > 0 ? (
+        <p className="mb-5 flex flex-wrap gap-x-6 gap-y-1 text-sm text-fg-muted" aria-label="Summary">
+          <span>
+            Waiting on a reply: <span className="font-num font-semibold text-fg">{fmt(sum('sent'))}</span> <span className="text-fg-subtle">({count('sent')})</span>
+          </span>
+          <span>
+            Accepted: <span className="font-num font-semibold text-success">{fmt(sum('accepted'))}</span> <span className="text-fg-subtle">({count('accepted')})</span>
+          </span>
+          <span>
+            Drafts: <span className="font-num font-semibold text-fg">{count('draft')}</span>
+          </span>
+          <span>
+            Accepted vs declined: <span className="font-num font-semibold text-fg">{decided ? `${Math.round((count('accepted') / decided) * 100)}%` : 'none yet'}</span>
+          </span>
+        </p>
+      ) : null}
       {mixed && !loading && <p className="-mt-3 mb-4 text-xs text-fg-subtle">Proposals use more than one currency. Totals add the numbers together and show {currency}.</p>}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -189,7 +193,7 @@ export default function ProposalsView() {
         <EmptyState
           icon={<ProposalsIcon className="h-5 w-5" />}
           title={all.length === 0 ? 'No proposals yet' : 'No proposals match'}
-          text={all.length === 0 ? 'Open a lead or a deal and choose Create proposal. Pick a package, adjust the price and download a one page PDF.' : 'Change the status filter or the search.'}
+          text={all.length === 0 ? 'Press New proposal, pick a package, adjust the prices and download a one-page PDF. You can also start one from any lead or deal.' : 'Change the status filter or the search.'}
           action={
             all.length === 0 ? (
               <Button variant="primary" onClick={newBlank}>
@@ -207,7 +211,7 @@ export default function ProposalsView() {
                   <Th>Proposal</Th>
                   <Th>Status</Th>
                   <Th align="right">Total</Th>
-                  <Th>Valid until</Th>
+                  <Th>Offer ends</Th>
                   <Th>Updated</Th>
                 </tr>
               </THead>
@@ -246,7 +250,7 @@ export default function ProposalsView() {
                     <Badge tone={STATUS_TONE[st]} dot>
                       {STATUS_LABEL[st]}
                     </Badge>
-                    {p.valid_until && <span className="text-xs text-fg-subtle">Valid until {fmtDate(p.valid_until)}</span>}
+                    {p.valid_until && <span className="text-xs text-fg-subtle">Offer ends {fmtDate(p.valid_until)}</span>}
                   </div>
                 </Link>
               </li>

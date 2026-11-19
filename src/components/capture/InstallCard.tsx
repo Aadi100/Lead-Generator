@@ -10,8 +10,6 @@ import { CopyIcon, SendIcon } from '../Icons';
 
 const SITE_TIPS: { site: string; tip: string }[] = [
   { site: 'Eldorado, G2G, Z2U, FunPay', tip: 'Open a listing or search results page, then click the bookmark. It picks up each offer that shows a price.' },
-  { site: 'Discord', tip: 'Open Discord in your browser (discord.com/app), open the trading channel, scroll so the messages are on screen, then click the bookmark.' },
-  { site: 'Telegram', tip: 'Select the text of a post with your mouse, then click the bookmark.' },
   { site: 'Any other site', tip: 'Select the text you care about and click the bookmark. With nothing selected it looks for offers that show a price.' },
 ];
 
@@ -37,12 +35,12 @@ export default function InstallCard() {
 
   return (
     <Card
-      title="Install the bookmark"
-      subtitle="One-time setup. It adds a button to your browser that sends what you see on a page to Lead Radar."
+      title="How it works"
+      subtitle="Three steps. The first one is only needed once."
       className="glass"
     >
       <ol className="space-y-5">
-        <Step n={1} title="Drag this button onto your bookmarks bar" text="Show the bar first with Ctrl+Shift+B in Chrome and Edge.">
+        <Step n={1} title="Install the button" text="Drag the button below up to your bookmarks bar. Press Ctrl+Shift+B first if you cannot see the bar.">
           <div className="flex flex-wrap items-center gap-3">
             <a
               ref={linkRef}
@@ -60,7 +58,7 @@ export default function InstallCard() {
             <p className="text-xs text-fg-subtle">If dragging does not work, make the bookmark by hand below.</p>
           </div>
           <details className="glass-subtle mt-3 rounded-card p-3">
-            <summary className="cursor-pointer text-sm font-medium text-fg">Making the bookmark by hand</summary>
+            <summary className="cursor-pointer text-sm font-medium text-fg">Dragging does not work? Make it by hand</summary>
             <p className="mb-2 mt-2 text-xs text-fg-subtle">Create a new bookmark, call it Send to Lead Radar, and paste this code into its address (URL) field.</p>
             <textarea
               readOnly
@@ -79,8 +77,10 @@ export default function InstallCard() {
           </details>
         </Step>
 
-        <Step n={2} title="Open the site you want and click the bookmark" text="A new tab opens here with what it found.">
-          <ul className="space-y-2">
+        <Step n={2} title="Open a post you like" text="Go to any page with an offer or request, in your normal browser tab.">
+          <details>
+            <summary className="inline-flex min-h-9 cursor-pointer items-center text-sm font-semibold text-primary-text">Show tips for each site</summary>
+          <ul className="mt-2 space-y-2">
             {SITE_TIPS.map((t) => (
               <li key={t.site} className="rounded-ctl bg-surface-2/60 px-3 py-2 text-sm text-fg-muted">
                 <span className="font-medium text-fg">{t.site}: </span>
@@ -88,25 +88,26 @@ export default function InstallCard() {
               </li>
             ))}
           </ul>
+          </details>
         </Step>
 
-        <Step n={3} title="Check what it found, then press Save" text="Untick anything you do not want. Saved items appear in Leads." />
+        <Step n={3} title="Click the button" text="This page opens with what it found. Untick anything you do not want, then press Save. Saved items appear in Leads." />
       </ol>
 
-      <div className="mt-5">
+      <details className="mt-5">
+        <summary className="inline-flex min-h-9 cursor-pointer items-center text-sm font-semibold text-primary-text">Show good to know</summary>
         <Notice tone="info">
-          <p className="font-medium">Good to know</p>
           <ul className="mt-1 list-disc space-y-1 pl-5">
             <li>It only sees what is on your screen at that moment. It cannot see anything you have not opened.</li>
             <li>Fiverr buyer requests and Upwork jobs need you to be logged in, so Lead Radar never fetches them. Open one yourself and click the bookmark: it reads the request or job on screen. Upwork alert emails can also be read from your inbox (Settings &gt; Connections).</li>
             <li>It works best on pages that list offers with prices. On other pages, select the text first.</li>
             <li>Only capture from servers and groups you are a member of, and keep to each site&apos;s rules.</li>
             <li>The bookmark opens this dashboard at {origin || 'this address'}, so it only works on the computer where the dashboard runs.</li>
-            <li>A few sites block bookmarks. If nothing happens, copy the text and use Paste text below.</li>
+            <li>A few sites block bookmarks. If nothing happens, copy the text and use "Other ways to add a lead" below.</li>
             <li>If this page asks you to sign in, sign in and click the bookmark again.</li>
           </ul>
         </Notice>
-      </div>
+      </details>
     </Card>
   );
 }

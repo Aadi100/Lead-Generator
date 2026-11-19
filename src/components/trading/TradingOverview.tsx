@@ -14,6 +14,7 @@ import JobAction from './JobAction';
 import { SuggestionGrid, useCatalogAdder } from './Suggestions';
 import { TrendLines } from './TradeCharts';
 import TradingNav from './TradingNav';
+import Advanced from '@/components/settings/Advanced';
 
 function perDay(leads: Lead[], pick: (l: Lead) => boolean, days = 14, now = Date.now()): number[] {
   const out = Array.from({ length: days }, () => 0);
@@ -76,18 +77,16 @@ export default function TradingOverview() {
 
   const entries = (trading?.i_sell.length ?? 0) + (trading?.i_want.length ?? 0);
   const subs = bundle?.state.subs_ok.length ?? 0;
-  const discordOn = !!trading?.discord.enabled && trading.discord.channels.length > 0;
-  const discordStatus = bundle?.integrations.status.discord;
 
   return (
     <div>
       <PageHeader
-        title="Game Trading"
-        subtitle="Buyers for what you sell, sellers of what you want, and how the market is moving."
+        title="Game trading"
+        subtitle="Find people who want what you sell, and people selling what you want to buy."
         actions={
           <>
             <JobAction type="suggest_trading" label="Suggest what I can sell" runningText="Thinking it through" icon={<SparklesIcon className="h-4 w-4" />} successText={() => 'New ideas are ready.'} onDone={() => void reloadSettings()} />
-            <JobAction type="trade_scan" label="Find trade leads now" runningText="Searching Reddit and Discord" variant="primary" icon={<SearchIcon className="h-4 w-4" />} successText={(r) => `Found ${Number(r?.inserted ?? 0)} new trade leads.`} onDone={() => void reload()} />
+            <JobAction type="trade_scan" label="Find trade leads now" runningText="Searching Reddit" variant="primary" icon={<SearchIcon className="h-4 w-4" />} successText={(r) => `Found ${Number(r?.inserted ?? 0)} new trade leads.`} onDone={() => void reload()} />
           </>
         }
       />
@@ -99,50 +98,57 @@ export default function TradingOverview() {
         </Banner>
       )}
 
-      {/* Setup status strip */}
-      {bundle && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface px-3.5 py-2.5 text-[13px]" aria-label="Setup status" role="group">
-          <span className="font-medium text-fg">Setup</span>
-          <Link href="/trading/catalog" className="rounded-full">
-            <Badge tone={trading?.enabled ? 'success' : 'warning'} dot>
-              {trading?.enabled ? 'Searching is on' : 'Searching is off'}
-            </Badge>
-          </Link>
-          <Link href="/trading/catalog" className="rounded-full">
-            <Badge tone={entries > 0 ? 'success' : 'warning'} dot>
-              {entries > 0 ? `${entries} in my catalog` : 'Catalog is empty'}
-            </Badge>
-          </Link>
-          <Badge tone={subs > 0 ? 'success' : 'neutral'} dot>
-            {subs > 0 ? `${subs} Reddit communities` : 'Reddit not checked yet'}
-          </Badge>
-          <Badge tone={discordOn ? (discordStatus && !discordStatus.ok ? 'danger' : 'success') : 'neutral'} dot title={discordStatus?.message}>
-            {discordOn ? (discordStatus && !discordStatus.ok ? 'Discord has a problem' : `Discord: ${trading?.discord.channels.length} channels`) : 'Discord is off'}
-          </Badge>
-          {(!trading?.enabled || entries === 0) && (
-            <Link href="/trading/catalog" className="ml-auto inline-flex items-center gap-1 font-medium text-primary-text hover:underline">
-              Finish setup <ArrowRightIcon className="h-3.5 w-3.5" />
+      {/* Setup: only shown when something is missing */}
+      {bundle && (!trading?.enabled || entries === 0) && (
+        <Banner
+          tone="warning"
+          className="mb-4"
+          title={!trading?.enabled ? 'Trading is switched off' : 'Your catalog is empty'}
+          action={
+            <Link href="/trading/catalog" className="btn inline-flex min-h-9 items-center rounded-ctl bg-primary px-3.5 py-1.5 text-sm font-semibold text-primary-fg hover:opacity-90">
+              Set up trading
             </Link>
-          )}
-        </div>
+          }
+        >
+          {!trading?.enabled ? 'Nothing new is being collected. Switch it on and list the games you deal in.' : 'Tell me which games and items you deal in so I can point out posts that fit.'}
+        </Banner>
       )}
 
       {/* KPI tiles */}
       {tilesLoading ? (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-[92px] rounded-card" />
           ))}
         </div>
       ) : (
-        <Stagger className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6" step={35}>
+        <Stagger className="grid grid-cols-2 gap-3 xl:grid-cols-4" step={35}>
           <StatTile label="Buyers waiting" value={<CountUp value={stats.buyersWaiting} />} sub="Match what you sell" tone="accent" trend={stats.buyerTrend} href="/trading/buyers?matched=1&status=New" icon={<BuyersIcon className="h-4 w-4" />} />
           <StatTile label="Sellers found" value={<CountUp value={stats.sellers} />} sub="Last 90 days" tone="info" trend={stats.sellerTrend} href="/trading/sellers" icon={<SellersIcon className="h-4 w-4" />} />
-          <StatTile label="New matches" value={<CountUp value={stats.matches} />} sub="Fit your catalog" tone="primary" trend={stats.matchTrend} icon={<CheckCircleIcon className="h-4 w-4" />} />
-          <StatTile label="Open trade deals" value={<CountUp value={stats.open} />} sub="Talking to paid" href="/deals" icon={<DealsIcon className="h-4 w-4" />} />
-          <StatTile label="Revenue this month" value={<CountUp value={stats.revenue} format={(n) => money(n)} />} sub={`${stats.doneCount} finished ${stats.doneCount === 1 ? 'deal' : 'deals'}`} tone="success" href="/deals" />
+          <StatTile label="Open deals" value={<CountUp value={stats.open} />} sub="Not paid yet" href="/deals" icon={<DealsIcon className="h-4 w-4" />} />
           <StatTile label="Profit this month" value={<CountUp value={stats.profit} format={(n) => money(n)} />} sub="Revenue minus costs" tone={stats.profit < 0 ? 'danger' : 'success'} href="/deals" />
         </Stagger>
+      )}
+      {!tilesLoading && (
+        <Advanced id="trading-overview-numbers" title="Show more numbers" hint="New matches, revenue and weekly price trend." className="mt-3">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <StatTile label="New matches" value={<CountUp value={stats.matches} />} sub="Fit your catalog" tone="primary" trend={stats.matchTrend} icon={<CheckCircleIcon className="h-4 w-4" />} />
+            <StatTile label="Revenue this month" value={<CountUp value={stats.revenue} format={(n) => money(n)} />} sub={`${stats.doneCount} finished ${stats.doneCount === 1 ? 'deal' : 'deals'}`} tone="success" href="/deals" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-[13px]" role="group" aria-label="Where posts are collected from">
+            <span className="font-medium text-fg">Where I look</span>
+            <Badge tone={subs > 0 ? 'success' : 'neutral'} dot>
+              {subs > 0 ? `${subs} Reddit communities` : 'Reddit not checked yet'}
+            </Badge>
+          </div>
+          <Card title="Price trend" subtitle="Typical (median) price per week for the busiest games, last 90 days">
+            {trend.series.length === 0 ? (
+              <EmptyState icon={<MarketIcon className="h-5 w-5" />} title="Not enough prices yet" text="Lines appear once posts that state a price have been found over a few weeks." className="border-0 py-8" />
+            ) : (
+              <TrendLines trend={trend} />
+            )}
+          </Card>
+        </Advanced>
       )}
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
@@ -150,7 +156,7 @@ export default function TradingOverview() {
         <Reveal>
           <Card
             title="Hot demand"
-            subtitle={hot.source === 'live' ? 'Games and items where many people want to buy and few sell (last 30 days)' : 'From the last market refresh'}
+            subtitle={hot.source === 'live' ? 'Games where many people want to buy and few sell, last 30 days' : 'From the last market refresh'}
             actions={
               <Link href="/trading/market" className="inline-flex items-center gap-1 text-[13px] font-medium text-primary-text hover:underline">
                 Full market <ArrowRightIcon className="h-3.5 w-3.5" />
@@ -254,19 +260,7 @@ export default function TradingOverview() {
         </Reveal>
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <Reveal>
-          <Card title="Price trend" subtitle="Typical (median) price per week for the busiest games, last 90 days" className="h-full">
-            {loading ? (
-              <Skeleton className="h-48" />
-            ) : trend.series.length === 0 ? (
-              <EmptyState icon={<MarketIcon className="h-5 w-5" />} title="Not enough prices yet" text="Lines appear once posts that state a price have been found over a few weeks." className="border-0 py-8" />
-            ) : (
-              <TrendLines trend={trend} />
-            )}
-          </Card>
-        </Reveal>
-
+      <div className="mt-4">
         <Reveal delay={60}>
           <Card
             title="What you could sell"
@@ -289,13 +283,6 @@ export default function TradingOverview() {
         </Reveal>
       </div>
 
-      {bundle && !bundle.trading.enabled && (
-        <Banner tone="warning" className="mt-4" title="Game trading searching is off">
-          <span className="inline-flex flex-wrap items-center gap-1">
-            Switch it on in <Link href="/trading/catalog" className="font-medium text-primary-text hover:underline">My catalog</Link> so new posts are collected.
-          </span>
-        </Banner>
-      )}
       {adder.drawer}
     </div>
   );

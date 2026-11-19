@@ -3,7 +3,20 @@ import { STATUSES, type Status } from './types';
 
 export const RANGES = [7, 30, 90] as const;
 export type RangeDays = (typeof RANGES)[number];
-export const ROW_CAP = 2000;
+export const ROW_CAP = 5000;
+const PAGE = 1000;
+
+/** Supabase returns at most 1000 rows per request, so load in pages (up to ROW_CAP rows). */
+async function fetchPaged(build: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>): Promise<{ data: unknown[]; error: { message: string } | null }> {
+  const out: unknown[] = [];
+  for (let from = 0; from < ROW_CAP; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    if (error) return { data: out, error };
+    out.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  return { data: out, error: null };
+}
 
 export type ALead = {
   status: Status;
@@ -41,10 +54,10 @@ export async function fetchAnalytics(days: number): Promise<AnalyticsData> {
   const since = sinceDate(days).toISOString();
   const errors: string[] = [];
   const [l, o, r, ev] = await Promise.all([
-    supabase.from('leads').select('status,source,category,lead_kind,trust_score,created_at').gte('created_at', since).order('created_at', { ascending: false }).limit(ROW_CAP),
-    supabase.from('outreach').select('sent_at').eq('status', 'sent').gte('sent_at', since).limit(ROW_CAP),
-    supabase.from('replies').select('received_at,created_at,category').gte('created_at', since).limit(ROW_CAP),
-    supabase.from('learning_events').select('kind').limit(5000),
+    fetchPaged((a, b) => supabase.from('leads').select('status,source,category,lead_kind,trust_score,created_at').gte('created_at', since).order('created_at', { ascending: false }).range(a, b)),
+    fetchPaged((a, b) => supabase.from('outreach').select('sent_at').eq('status', 'sent').gte('sent_at', since).order('sent_at', { ascending: false }).range(a, b)),
+    fetchPaged((a, b) => supabase.from('replies').select('received_at,created_at,category').gte('created_at', since).order('created_at', { ascending: false }).range(a, b)),
+    fetchPaged((a, b) => supabase.from('learning_events').select('kind').order('created_at', { ascending: false }).range(a, b)),
   ]);
   if (l.error) errors.push(`Leads: ${l.error.message}`);
   if (o.error) errors.push(`Messages sent: ${o.error.message}`);
@@ -141,10 +154,10 @@ export function bucketize(days: number, items: { at: string; series: 'a' | 'b' }
 }
 
 export const TRUST_BANDS = [
-  { label: '80 to 100 (high)', min: 80, max: 100 },
-  { label: '60 to 79', min: 60, max: 79 },
-  { label: '40 to 59', min: 40, max: 59 },
-  { label: '0 to 39 (low)', min: 0, max: 39 },
+  { label: 'Looks real (80 to 100)', min: 80, max: 100 },
+  { label: 'Mostly fine (60 to 79)', min: 60, max: 79 },
+  { label: 'Check first (40 to 59)', min: 40, max: 59 },
+  { label: 'Be careful (0 to 39)', min: 0, max: 39 },
 ] as const;
 
 export function trustBands(leads: ALead[]) {

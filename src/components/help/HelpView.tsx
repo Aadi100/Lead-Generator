@@ -91,13 +91,13 @@ function AboutCard() {
     <Card id="about" title="About this install" subtitle="Lead Radar runs on your own computer and your own database." className="scroll-mt-20">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Badge tone={workerOnline ? 'success' : 'danger'} dot>
-          {workerOnline ? 'Worker online' : 'Worker offline'}
+          {workerOnline ? 'Helper running' : 'Helper offline: start it to send and write'}
         </Badge>
         <Badge tone={claudeReady ? 'success' : 'neutral'} dot>
-          {claudeReady ? 'Claude CLI ready' : 'Claude CLI not found'}
+          {claudeReady ? 'AI writer ready' : 'AI writer not found'}
         </Badge>
-        {info?.version && <Badge>Claude {info.version}</Badge>}
-        {info?.seen && <span className="text-xs text-fg-subtle">Worker last seen {timeAgo(info.seen)}</span>}
+        {info?.version && <Badge>AI writer {info.version}</Badge>}
+        {info?.seen && <span className="text-xs text-fg-subtle">Helper last seen {timeAgo(info.seen)}</span>}
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stat('Leads', counts?.leads)}
@@ -135,24 +135,24 @@ function HelpBody() {
   const steps = GETTING_STARTED.filter(keep);
   const sections = SECTION_ORDER.map((s) => ({ ...s, entries: s.entries.filter(keep) }));
   const shortcuts = SHORTCUTS.filter((s) => !searching || matches(`${s.keys.join(' ')} ${s.action} ${s.where} shortcuts keyboard`, q));
-  const aboutHit = !searching || matches('about worker claude cli version counts leads outreach deals tasks', q);
+  const aboutHit = !searching || matches('about background helper worker ai writer claude cli version counts leads outreach deals tasks', q);
   const total = steps.length + sections.reduce((n, s) => n + s.entries.length, 0) + shortcuts.length;
 
   const toc = [
-    { id: 'start', label: 'Getting started' },
-    ...SECTION_ORDER.filter((s) => s.id === 'modules').map((s) => ({ id: s.id, label: s.title })),
-    { id: 'glossary', label: 'Glossary' },
+    { id: 'start', label: 'Start here' },
+    { id: 'faq', label: 'Common questions' },
+    { id: 'modules', label: 'What each page does' },
+    { id: 'glossary', label: 'What the words mean' },
     { id: 'shortcuts', label: 'Keyboard shortcuts' },
-    { id: 'faq', label: 'Questions' },
     { id: 'safety', label: 'Safety rules' },
-    { id: 'about', label: 'About' },
+    { id: 'about', label: 'About this install' },
   ];
 
   const byId = (id: string) => sections.find((s) => s.id === id);
 
   return (
     <PageContainer>
-      <PageHeader title="Help" subtitle="How things work, keyboard shortcuts and what to do first." />
+      <PageHeader title="Help" subtitle="Start here, answers to common questions, and what the words in the app mean." />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative max-w-xl flex-1">
@@ -161,7 +161,7 @@ function HelpBody() {
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search help, for example &quot;trust score&quot; or &quot;API key&quot;"
+            placeholder="Search help, for example &quot;Looks real&quot; or &quot;key&quot;"
             aria-label="Search help"
             className="field h-11 w-full pl-9 pr-10"
           />
@@ -194,14 +194,14 @@ function HelpBody() {
             <EmptyState
               icon={<SearchIcon className="h-5 w-5" />}
               title="Nothing matches that"
-              text="Try a shorter or simpler word, such as email, leads or worker."
+              text="Try a shorter or simpler word, such as email, leads or helper."
               action={<Button onClick={() => setQ('')}>Clear search</Button>}
             />
           )}
 
           {steps.length > 0 && (
             <Reveal>
-              <Card id="start" title="Getting started" subtitle="Six steps from empty to your first sent message." className="scroll-mt-20">
+              <Card id="start" title="Start here" subtitle="Five steps from empty to your first sent message." className="scroll-mt-20">
                 <ol className="space-y-3">
                   {steps.map((s) => (
                     <li key={s.id} className="flex gap-3">
@@ -223,6 +223,7 @@ function HelpBody() {
             </Reveal>
           )}
 
+          {byId('faq') && <Section {...(byId('faq') as (typeof sections)[number])} searching={searching} />}
           {byId('modules') && <Section {...(byId('modules') as (typeof sections)[number])} searching={searching} />}
           {byId('glossary') && <Section {...(byId('glossary') as (typeof sections)[number])} searching={searching} />}
 
@@ -261,7 +262,6 @@ function HelpBody() {
             </Card>
           )}
 
-          {byId('faq') && <Section {...(byId('faq') as (typeof sections)[number])} searching={searching} />}
           {byId('safety') && <Section {...(byId('safety') as (typeof sections)[number])} searching={searching} />}
           {aboutHit && <AboutCard />}
         </div>

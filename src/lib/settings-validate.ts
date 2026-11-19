@@ -29,9 +29,3 @@ export function urlError(v: string): string | null {
     return 'Use a full link that starts with https://.';
   }
 }
-
-export function webhookError(v: string): string | null {
-  const t = v.trim();
-  if (!t) return null;
-  return /^https:\/\/(discord(app)?\.com)\/api\/webhooks\//.test(t) ? null : 'A Discord webhook starts with https://discord.com/api/webhooks/.';
-}

@@ -22,6 +22,7 @@ import {
   inputCls,
   pill,
 } from '../ui';
+import Advanced from './Advanced';
 import SaveBar from './SettingsSaveBar';
 
 const SOURCE_STATUS = {
@@ -113,71 +114,74 @@ export default function ProfileTab() {
 
   return (
     <div className="space-y-4">
-      <Card title="About you" subtitle="I read these to learn what you sell and how you write, then use it in every pitch and to rank leads.">
+      <Card title="Your details" subtitle="I use these in every message and to rank leads by how well they fit you.">
         {form.loading ? (
           <p className="text-sm text-fg-subtle">Loading…</p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Your name" htmlFor="pf-name">
-              <input id="pf-name" className={inputCls} value={p.your_name} onChange={(e) => form.patch({ your_name: e.target.value })} />
-            </Field>
-            <Field label="Business name" htmlFor="pf-biz" hint="Leave empty if you work under your own name.">
-              <input id="pf-biz" className={inputCls} value={p.business_name} onChange={(e) => form.patch({ business_name: e.target.value })} />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label="What do you do, in one line?" htmlFor="pf-headline" hint="For example: I build websites and brand identities for small restaurants.">
-                <input id="pf-headline" className={inputCls} value={p.headline} onChange={(e) => form.patch({ headline: e.target.value })} />
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Your name" htmlFor="pf-name">
+                <input id="pf-name" className={inputCls} value={p.your_name} onChange={(e) => form.patch({ your_name: e.target.value })} />
               </Field>
-            </div>
-            <Field label="Your email" htmlFor="pf-email" error={emailTouched ? emailError(p.email) : null}>
-              <input id="pf-email" type="email" className={inputCls} onBlur={() => setEmailTouched(true)} value={p.email} onChange={(e) => form.patch({ email: e.target.value })} />
-            </Field>
-            <Field label="Where you are" htmlFor="pf-loc">
-              <input id="pf-loc" className={inputCls} value={p.location} onChange={(e) => form.patch({ location: e.target.value })} />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label="Services you offer" htmlFor="pf-services" hint="Press Enter after each one, for example: websites, logo design, mobile apps.">
-                <TagInput id="pf-services" label="Services" value={p.services} onChange={(v) => form.patch({ services: v })} placeholder="Add a service" />
+              <Field label="Your email" htmlFor="pf-email" error={emailTouched ? emailError(p.email) : null}>
+                <input id="pf-email" type="email" className={inputCls} onBlur={() => setEmailTouched(true)} value={p.email} onChange={(e) => form.patch({ email: e.target.value })} />
               </Field>
+              <div className="sm:col-span-2">
+                <Field label="What do you do, in one line?" htmlFor="pf-headline" hint="For example: I build websites and brand identities for small restaurants.">
+                  <input id="pf-headline" className={inputCls} value={p.headline} onChange={(e) => form.patch({ headline: e.target.value })} />
+                </Field>
+              </div>
+              <div className="sm:col-span-2">
+                <Field label="Services you offer" htmlFor="pf-services" hint="Press Enter after each one, for example: websites, logo design, mobile apps.">
+                  <TagInput id="pf-services" label="Services" value={p.services} onChange={(v) => form.patch({ services: v })} placeholder="Add a service" />
+                </Field>
+              </div>
+              <div className="sm:col-span-2">
+                <Field label="Your websites and portfolio" htmlFor="pf-sites">
+                  <RepeatableInput
+                    id="pf-sites"
+                    label="Website"
+                    value={p.websites}
+                    onChange={(v) => form.patch({ websites: v })}
+                    placeholder="https://yourwebsite.com"
+                    addLabel="Add another website"
+                  />
+                </Field>
+              </div>
             </div>
-            <div className="sm:col-span-2">
-              <Field label="Your websites and portfolio" htmlFor="pf-sites">
-                <RepeatableInput
-                  id="pf-sites"
-                  label="Website"
-                  value={p.websites}
-                  onChange={(v) => form.patch({ websites: v })}
-                  placeholder="https://yourwebsite.com"
-                  addLabel="Add another website"
-                />
-              </Field>
-            </div>
-            <div className="sm:col-span-2">
-              <Field
-                label="Your social and profile links"
-                htmlFor="pf-links"
-                hint="LinkedIn, GitHub, Behance, Dribbble, Instagram, X, Upwork, Fiverr and so on. Some sites block automatic reading, and I tell you which."
-              >
-                <RepeatableInput
-                  id="pf-links"
-                  label="Profile link"
-                  value={p.links}
-                  onChange={(v) => form.patch({ links: v })}
-                  placeholder="https://www.linkedin.com/in/you"
-                  addLabel="Add another link"
-                />
-              </Field>
-            </div>
-            <div className="sm:col-span-2">
-              <Field label="Anything else I should know?" htmlFor="pf-notes" hint="Prices, what you will not do, the kind of clients you love.">
-                <textarea id="pf-notes" rows={3} className={`${inputCls} resize-y`} value={p.notes} onChange={(e) => form.patch({ notes: e.target.value })} />
-              </Field>
-            </div>
-            <div className="sm:col-span-2">
-              <Field label="Email signature" htmlFor="pf-sig" hint="How your pitches end, for example your name and website.">
-                <textarea id="pf-sig" rows={3} className={`${inputCls} resize-y`} value={p.signature} onChange={(e) => form.patch({ signature: e.target.value })} />
-              </Field>
-            </div>
+
+            <Advanced id="profile" hint="Business name, location, social links, notes and email signature.">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Business name" htmlFor="pf-biz" hint="Leave empty if you work under your own name.">
+                  <input id="pf-biz" className={inputCls} value={p.business_name} onChange={(e) => form.patch({ business_name: e.target.value })} />
+                </Field>
+                <Field label="Where you are" htmlFor="pf-loc">
+                  <input id="pf-loc" className={inputCls} value={p.location} onChange={(e) => form.patch({ location: e.target.value })} />
+                </Field>
+                <div className="sm:col-span-2">
+                  <Field label="Your social and profile links" htmlFor="pf-links" hint="LinkedIn, GitHub, Behance, Instagram, Upwork and so on. Some sites block reading, and I tell you which.">
+                    <RepeatableInput
+                      id="pf-links"
+                      label="Profile link"
+                      value={p.links}
+                      onChange={(v) => form.patch({ links: v })}
+                      placeholder="https://www.linkedin.com/in/you"
+                      addLabel="Add another link"
+                    />
+                  </Field>
+                </div>
+                <div className="sm:col-span-2">
+                  <Field label="Anything else I should know?" htmlFor="pf-notes" hint="Prices, what you will not do, the kind of clients you love.">
+                    <textarea id="pf-notes" rows={3} className={`${inputCls} resize-y`} value={p.notes} onChange={(e) => form.patch({ notes: e.target.value })} />
+                  </Field>
+                </div>
+                <div className="sm:col-span-2">
+                  <Field label="Email signature" htmlFor="pf-sig" hint="How your messages end, for example your name and website.">
+                    <textarea id="pf-sig" rows={3} className={`${inputCls} resize-y`} value={p.signature} onChange={(e) => form.patch({ signature: e.target.value })} />
+                  </Field>
+                </div>
+              </div>
+            </Advanced>
           </div>
         )}
         <SaveBar dirty={form.dirty} saving={form.saving} onSave={() => void save()} onReset={form.reset} error={form.error} />
@@ -185,7 +189,7 @@ export default function ProfileTab() {
 
       <Card
         title="What I learned about you"
-        subtitle={summary.generated_at ? `${summary.mode === 'claude' ? 'Written with Claude' : 'Simple summary'} · ${fmtDateTime(summary.generated_at)}` : 'Not learned yet'}
+        subtitle={summary.generated_at ? `${summary.mode === 'claude' ? 'Written by the AI writer' : 'Simple summary'} · ${fmtDateTime(summary.generated_at)}` : 'Not learned yet'}
         actions={
           <button type="button" onClick={() => void runLearn()} disabled={learn.running || !hasLinks} className={btnPrimary}>
             {learn.running ? <Spinner /> : <SparkIcon className="h-4 w-4" />}

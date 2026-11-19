@@ -10,6 +10,7 @@ import { enqueueJob, waitForJob } from '@/lib/jobs';
 import { groupByLead, recordOutcome, sentTodayCount, useOutreach, useReplies } from '@/lib/outreach';
 import { chipFor, useLeadLinks, type AlsoSeenChip } from '@/lib/lead-identity';
 import {
+  DEFAULT_STATE,
   hasActiveFilters,
   isServiceLead,
   matchesFilters,
@@ -32,9 +33,14 @@ import LeadDetail from '@/components/leads/LeadDetail';
 import { BulkBar, BulkNoteModal, ShortcutsModal } from '@/components/leads/LeadsChrome';
 
 const CHUNK = 50;
+const PAGE = 1000; // the server returns at most 1000 rows per request
+const MAX_LEADS = 5000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 type LeadPatch = Partial<Pick<Lead, 'status' | 'notes' | 'pitched_at' | 'enrich_status' | 'enrich_error'>>;
+
+// Kept between visits so switching back to Leads shows the list at once while it refreshes quietly.
+let leadsCache: Lead[] = [];
 
 function mergeLoaded(fetched: Lead[], current: Lead[]): Lead[] {
   const ids = new Set(fetched.map((l) => l.id));
@@ -72,8 +78,8 @@ function LeadsView() {
   const stateRef = useRef<LeadsState>(state);
   stateRef.current = state;
 
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [leads, setLeads] = useState<Lead[]>(leadsCache);
+  const [loading, setLoading] = useState(leadsCache.length === 0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [visible, setVisible] = useState(CHUNK);
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
@@ -86,6 +92,7 @@ function LeadsView() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [newSinceLoad, setNewSinceLoad] = useState(0);
+  const [capped, setCapped] = useState(false);
 
   const leadsRef = useRef<Lead[]>([]);
   leadsRef.current = leads;
@@ -124,14 +131,43 @@ function LeadsView() {
   }, []);
 
   const loadLeads = useCallback(async () => {
-    setLoading(true);
+    if (leadsCache.length === 0) setLoading(true);
     setLoadError(null);
-    const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(2000);
-    if (error) {
-      setLoadError(error.message);
+    // Load in pages of 1000. The first page shows at once, the rest fills in quietly.
+    const byId = new Map<string, Lead>();
+    let failed: string | null = null;
+    let hitCap = false;
+    for (let from = 0; from < MAX_LEADS; from += PAGE) {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error) {
+        failed = error.message;
+        break;
+      }
+      const rows = data ?? [];
+      rows.forEach((row) => {
+        const lead = normalizeLead(row as Record<string, unknown>);
+        if (isServiceLead(lead)) byId.set(lead.id, lead);
+      });
+      if (from === 0) {
+        const first = Array.from(byId.values());
+        setLeads((cur) => mergeLoaded(first, cur));
+        setLoading(false);
+      }
+      if (rows.length < PAGE) break;
+      if (from + PAGE >= MAX_LEADS) hitCap = true;
+    }
+    if (failed) {
+      setLoadError(failed);
     } else {
-      const fetched = (data ?? []).map((row) => normalizeLead(row as Record<string, unknown>)).filter(isServiceLead);
+      const fetched = Array.from(byId.values());
+      leadsCache = fetched;
       setLeads((cur) => mergeLoaded(fetched, cur));
+      setCapped(hitCap);
     }
     setLoading(false);
   }, []);
@@ -398,7 +434,7 @@ function LeadsView() {
   const selectedLead = activeId ? (leads.find((l) => l.id === activeId) ?? null) : null;
 
   const clearFilters = useCallback(() => {
-    setState({ kind: 'all', q: '', status: 'All', category: 'All', source: 'All', trust: 'All' });
+    setState({ kind: 'all', q: '', status: DEFAULT_STATE.status, category: 'All', source: 'All', trust: 'All' });
   }, [setState]);
 
   const openLead = useCallback((id: string) => {
@@ -549,7 +585,7 @@ function LeadsView() {
         title="Leads"
         subtitle={
           <span className="inline-flex flex-wrap items-center gap-x-2">
-            <span className="font-num">{total}</span> open leads, <span className="font-num">{kindCounts.all ? leads.filter((l) => l.status === 'New').length : 0}</span> not contacted yet
+            People and businesses that may want a website, app or design from you. The best matches come first.
             <span className="inline-flex items-center gap-1.5 text-xs text-fg-subtle" title="New leads appear here the moment they are found">
               <span className="live-dot inline-block h-2 w-2 bg-success-solid" aria-hidden="true" />
               Live{newSinceLoad > 0 ? `, ${newSinceLoad} new since you opened this page` : ''}
@@ -571,7 +607,7 @@ function LeadsView() {
         }
       />
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         <OnboardingCard />
         <StatsBar stats={stats} loading={initialLoading} />
       </div>
@@ -613,14 +649,14 @@ function LeadsView() {
             <EmptyState
               icon={<InboxIcon className="h-5 w-5" />}
               title="No leads yet"
-              text="New leads show up here the moment your workflows find them. You can also add one yourself from a post you found."
+              text="New leads show up here the moment your lead finders find them. You can also add one yourself from a post you found."
               action={
                 <>
                   <Link href="/capture" className="btn btn-primary inline-flex min-h-8 items-center rounded-ctl px-3 py-1.5 text-sm font-medium">
                     Add a lead
                   </Link>
                   <Link href="/sources" className="btn btn-secondary inline-flex min-h-8 items-center rounded-ctl px-3 py-1.5 text-sm font-medium">
-                    Check my sources
+                    Where leads come from
                   </Link>
                 </>
               }
@@ -631,8 +667,8 @@ function LeadsView() {
               title={kindCounts.all === 0 ? 'Nothing here yet' : 'No leads match these filters'}
               text={
                 state.kind === 'prospect' && kindLeads.length === 0
-                  ? 'Turn on Local prospecting in Settings and add a city. The worker then looks for businesses with no website.'
-                  : 'Try a different search, or show every category, source and status again.'
+                  ? 'Turn on Local business search in Settings and add a city. The background helper then looks for businesses with no website.'
+                  : 'Try a different search, or choose All to see every lead.'
               }
               action={
                 active ? (
@@ -654,6 +690,7 @@ function LeadsView() {
                 />
                 <p aria-live="polite">
                   Showing <span className="font-num">{visibleLeads.length}</span> of <span className="font-num">{shown.length}</span>
+                  {capped ? ' (newest 5,000 loaded)' : ''}
                 </p>
               </div>
 
@@ -692,7 +729,7 @@ function LeadsView() {
                   <InboxIcon className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <p className="text-sm font-semibold text-fg">Pick a lead to see the details</p>
-                <p className="max-w-xs text-sm text-fg-subtle">Use the arrow keys j and k to move, and Enter to open. Press ? to see every shortcut.</p>
+                <p className="max-w-xs text-sm text-fg-subtle">Click any lead on the left. Tip: j and k move up and down, ? shows every shortcut.</p>
               </div>
             )}
           </aside>

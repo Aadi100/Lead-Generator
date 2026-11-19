@@ -1,22 +1,21 @@
 "use client";
 
 import { useState } from 'react';
-import Link from 'next/link';
 import type { Lead, OutreachRow, ReplyRow, SendingSettings, Status } from '@/lib/types';
 import type { LeadLink } from '@/lib/types-intel';
 import type { LeadGroupInfo } from '@/lib/lead-identity';
 import { isHttpUrl, timeAgo } from '@/lib/format';
 import type { ToastItem } from '@/components/ui';
-import { Button, IconButton, Spinner, Tabs, cx } from '@/components/ui';
+import { Button, IconButton, MenuItem, MenuSeparator, Popover, Spinner, Tabs, cx } from '@/components/ui';
 import { ProposalsIcon } from '@/components/proposals/ProposalIcon';
-import { CalendarIcon, DealsIcon, ExternalIcon, MailIcon, SparkIcon, XIcon } from '@/components/Icons';
+import { CalendarIcon, ChevronIcon, DealsIcon, ExternalIcon, MailIcon, SparkIcon, XIcon } from '@/components/Icons';
 import DraftPanel from '@/components/DraftPanel';
 import EnrichmentBlock from '@/components/EnrichmentBlock';
 import LeadOverview from './LeadOverview';
 import LeadNotes from './LeadNotes';
 import LeadAlsoSeen from './LeadAlsoSeen';
 import ReplyAssistCard from '@/components/outbox/ReplyAssistCard';
-import { NEXT_STEP, StatusDot } from './LeadBits';
+import { NEXT_STEP, StatusDot, leadSummary } from './LeadBits';
 
 export type DetailTab = 'overview' | 'company' | 'messages' | 'notes';
 
@@ -92,53 +91,89 @@ export default function LeadDetail(props: LeadDetailProps) {
           </IconButton>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm leading-relaxed text-fg-muted">{leadSummary(lead)}</p>
+
+        <div className="flex items-center gap-2">
           {lead.status !== 'Ignored' &&
             (drafting ? (
-              <Button variant="primary" disabled leftIcon={<Spinner className="h-4 w-4" />}>
+              <Button variant="primary" size="lg" disabled leftIcon={<Spinner className="h-4 w-4" />} className="flex-1">
                 Writing the pitch…
               </Button>
             ) : rows.length === 0 ? (
-              <Button variant="primary" onClick={() => void write()} leftIcon={<SparkIcon className="h-4 w-4" />}>
+              <Button variant="primary" size="lg" onClick={() => void write()} leftIcon={<SparkIcon className="h-4 w-4" />} className="flex-1">
                 Write pitch
               </Button>
             ) : (
-              <Button variant="primary" onClick={() => setTab('messages')} leftIcon={<MailIcon className="h-4 w-4" />}>
+              <Button variant="primary" size="lg" onClick={() => setTab('messages')} leftIcon={<MailIcon className="h-4 w-4" />} className="flex-1">
                 {editable ? 'Review & send' : 'View pitch'}
               </Button>
             ))}
-          {canView && (
-            <a href={lead.url} target="_blank" rel="noopener noreferrer" className={cx('btn inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-ctl border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2 coarse:min-h-11')}>
-              Open post
-              <ExternalIcon className="h-4 w-4" aria-hidden="true" />
-            </a>
+          {lead.status === 'Ignored' && (
+            <Button variant="primary" size="lg" onClick={() => onStatus(lead.id, 'New')} className="flex-1">
+              Restore this lead
+            </Button>
           )}
-          <Link
-            href={`/deals?new=1&lead=${encodeURIComponent(lead.id)}`}
-            className="btn inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-ctl border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2 coarse:min-h-11"
+          <Popover
+            label="More actions"
+            role="menu"
+            align="end"
+            width="w-56"
+            trigger={({ open: _open, ...p }) => (
+              <Button {...p} size="lg" rightIcon={<ChevronIcon className="h-4 w-4" />}>
+                More
+              </Button>
+            )}
           >
-            <DealsIcon className="h-4 w-4" aria-hidden="true" />
-            Create deal
-          </Link>
-          <Link
-            href={`/proposals?new=1&lead=${encodeURIComponent(lead.id)}`}
-            className="btn inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-ctl border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2 coarse:min-h-11"
-          >
-            <ProposalsIcon className="h-4 w-4" />
-            Create proposal
-          </Link>
-          <Button
-            onClick={() => {
-              setTab('notes');
-              setTaskSignal((n) => n + 1);
-            }}
-            leftIcon={<CalendarIcon className="h-4 w-4" />}
-          >
-            Add task
-          </Button>
+            {(close) => (
+              <div className="p-1.5">
+                {canView && (
+                  <MenuItem
+                    icon={<ExternalIcon className="h-4 w-4" />}
+                    onClick={() => {
+                      window.open(lead.url, '_blank', 'noopener,noreferrer');
+                      close();
+                    }}
+                  >
+                    Open post
+                  </MenuItem>
+                )}
+                <MenuItem icon={<DealsIcon className="h-4 w-4" />} href={`/deals?new=1&lead=${encodeURIComponent(lead.id)}`}>
+                  Create deal
+                </MenuItem>
+                <MenuItem icon={<ProposalsIcon className="h-4 w-4" />} href={`/proposals?new=1&lead=${encodeURIComponent(lead.id)}`}>
+                  Create proposal
+                </MenuItem>
+                <MenuItem
+                  icon={<CalendarIcon className="h-4 w-4" />}
+                  onClick={() => {
+                    setTab('notes');
+                    setTaskSignal((n) => n + 1);
+                    close();
+                  }}
+                >
+                  Add task
+                </MenuItem>
+                {lead.status !== 'Ignored' && (
+                  <>
+                    <MenuSeparator />
+                    <MenuItem
+                      danger
+                      onClick={() => {
+                        onStatus(lead.id, 'Ignored');
+                        close();
+                      }}
+                    >
+                      Ignore this lead
+                    </MenuItem>
+                  </>
+                )}
+              </div>
+            )}
+          </Popover>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-fg-subtle">Stage</span>
           <div role="radiogroup" aria-label="Lead status" className="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-ctl border border-border bg-surface-2 p-0.5">
             {FLOW.map((s) => {
               const on = lead.status === s;
@@ -161,15 +196,6 @@ export default function LeadDetail(props: LeadDetailProps) {
               );
             })}
           </div>
-          {lead.status === 'Ignored' ? (
-            <Button variant="primary" onClick={() => onStatus(lead.id, 'New')}>
-              Restore
-            </Button>
-          ) : (
-            <Button variant="ghost" onClick={() => onStatus(lead.id, 'Ignored')} className="hover:!bg-danger-soft hover:!text-danger">
-              Ignore
-            </Button>
-          )}
         </div>
       </header>
 
@@ -183,7 +209,7 @@ export default function LeadDetail(props: LeadDetailProps) {
             { id: 'overview', label: 'Overview' },
             { id: 'company', label: 'Company' },
             { id: 'messages', label: 'Messages', count: rows.length || undefined },
-            { id: 'notes', label: 'Notes & reminders' },
+            { id: 'notes', label: 'Notes' },
           ]}
         />
       </div>

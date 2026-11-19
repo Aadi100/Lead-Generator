@@ -10,6 +10,6 @@ CREATE INDEX IF NOT EXISTS leads_game_idx  ON leads (game);
 CREATE INDEX IF NOT EXISTS leads_trade_idx ON leads (lead_kind, trade_side);
 
 INSERT INTO app_settings (key, value) VALUES
-  ('trading',      '{"enabled":false,"i_sell":[],"i_want":[],"games":[],"extra_subreddits":[],"discord":{"enabled":false,"channels":[]},"suggestions":null,"last_run":null,"last_result":null}'),
-  ('integrations', '{"serper":{"enabled":false,"api_key":"","services":true,"trading":true},"x":{"enabled":false,"bearer_token":""},"reddit_api":{"enabled":false,"client_id":"","client_secret":"","username":""},"discord":{"bot_token":""},"upwork_inbox":{"enabled":false},"status":{}}')
+  ('trading',      '{"enabled":false,"i_sell":[],"i_want":[],"games":[],"extra_subreddits":[],"suggestions":null,"last_run":null,"last_result":null}'),
+  ('integrations', '{"serper":{"enabled":false,"api_key":"","services":true,"trading":true},"x":{"enabled":false,"bearer_token":""},"reddit_api":{"enabled":false,"client_id":"","client_secret":"","username":""},"upwork_inbox":{"enabled":false},"status":{}}')
 ON CONFLICT (key) DO NOTHING;

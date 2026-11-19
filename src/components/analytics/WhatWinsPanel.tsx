@@ -41,6 +41,16 @@ function parseModel(v: unknown): OutcomeModelInfo | null {
   };
 }
 
+/** One short plain answer for the headline row: the strongest thing that helps, or a note that more results are needed. */
+export function WinsAnswer({ children }: { children: (v: { value: string; sub: string }) => React.ReactNode }) {
+  const [model, setModel] = useState<OutcomeModelInfo | null>(null);
+  useEffect(() => {
+    void supabase.from('app_settings').select('value').eq('key', 'outcome_model').maybeSingle().then(({ data }) => setModel(parseModel(data?.value)));
+  }, []);
+  if (model?.status === 'ready' && model.top_positive[0]) return <>{children({ value: model.top_positive[0].label, sub: 'Helps you get replies and wins most' })}</>;
+  return <>{children({ value: 'Learning', sub: `Needs ${model?.min_examples ?? 20} leads with a result (${model?.examples ?? 0} so far)` })}</>;
+}
+
 function SignalList({ title, items, tone, base }: { title: string; items: OutcomeFeature[]; tone: 'success' | 'danger'; base: number | null }) {
   return (
     <div className="min-w-0">
@@ -107,7 +117,7 @@ export default function WhatWinsPanel() {
     <Card
       id="what-wins"
       title="What wins for you"
-      subtitle={model?.generated_at ? `Learned from your results, updated ${fmtDateTime(model.generated_at)}` : 'Learned from the leads you reply to, win, ignore or lose'}
+      subtitle={model?.generated_at ? `What tends to get you replies and wins, updated ${fmtDateTime(model.generated_at)}` : 'What tends to get you replies and wins, learned from leads you reply to, win, ignore or lose'}
       actions={
         <Button variant="secondary" size="sm" onClick={() => void recompute()} disabled={job.running} loading={job.running} leftIcon={<RefreshIcon className="h-4 w-4" />}>
           Recompute now
@@ -143,7 +153,7 @@ export default function WhatWinsPanel() {
       <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-3 text-xs text-fg-subtle">
         <span>Same person on several sources?</span>
         <button type="button" onClick={() => void recheck()} disabled={dup.running} className="rounded font-medium text-primary-text hover:underline disabled:opacity-60">
-          {dup.running ? 'Checking all leads…' : 'Re-check duplicates on all leads'}
+          {dup.running ? 'Checking all leads…' : 'Re-check for duplicate leads'}
         </button>
         <JobNote phase={dup.phase === 'done' ? 'idle' : dup.phase} error={dup.error} runningText="This can take a few minutes." />
         {dupMsg && <span className="text-success">{dupMsg}</span>}

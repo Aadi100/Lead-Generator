@@ -142,7 +142,7 @@ INSERT INTO app_settings (key, value) VALUES
   ('smtp',          '{"host":"","port":587,"secure":false,"user":"","pass":""}'),
   ('resend',        '{"api_key":""}'),
   ('imap',          '{"enabled":false,"host":"","port":993,"secure":true,"user":"","pass":"","folder":"INBOX"}'),
-  ('alerts',        '{"enabled":false,"min_trust":70,"only_non_suspicious":true,"on_reply":true,"telegram":{"bot_token":"","chat_id":""},"email":{"to":""},"whatsapp":{"phone":"","apikey":""}}'),
+  ('alerts',        '{"enabled":false,"min_trust":70,"only_non_suspicious":true,"on_reply":true,"email":{"to":""},"whatsapp":{"phone":"","apikey":""}}'),
   ('targeting',     '{"keywords":[],"topics":[],"exclude":[],"min_budget":null,"work_description":"","job_description":"","suggested":null,"updated_at":null}'),
   ('prospecting',   '{"enabled":false,"cities":[],"business_types":["restaurant","cafe","bakery","hairdresser","beauty","dentist","gym","clothes","florist","car_repair"],"per_run_limit":30,"interval_hours":24}'),
   ('writing_rules', '{"source":"default","updated_at":null,"markdown":"# Writing rules\n- Open with something specific from their post or website, never a generic compliment.\n- Under 120 words. Plain words. No hype and no buzzwords.\n- One clear offer and one easy next step (a short reply or a 15-minute call).\n- Mention one concrete thing you can do for them and, when it is true, one problem you noticed on their site.\n- Never invent facts, clients, prices or results.\n- Link only to the sender''s own website. No attachments.\n- Sign off with the sender''s name from the profile.","history":[]}')

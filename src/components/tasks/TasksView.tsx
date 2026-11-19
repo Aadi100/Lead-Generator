@@ -42,18 +42,44 @@ export function TasksView() {
   const [links, setLinks] = useState<Record<string, LinkInfo>>({});
   const [error, setError] = useState<string | null>(null);
   const [doneOpen, setDoneOpen] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  useEffect(() => {
+    try {
+      setShowMore(localStorage.getItem('lead-radar:tasks-more') === '1');
+    } catch {
+      // storage unavailable
+    }
+  }, []);
+  const toggleMore = () =>
+    setShowMore((v) => {
+      try {
+        localStorage.setItem('lead-radar:tasks-more', v ? '0' : '1');
+      } catch {
+        // storage unavailable
+      }
+      return !v;
+    });
 
   const load = useCallback(async () => {
-    const [open, done] = await Promise.all([
-      supabase.from('tasks').select(TASK_COLUMNS).eq('done', false).order('due_at', { ascending: true, nullsFirst: false }).limit(1000),
+    // The server returns at most 1000 rows per request, so read open tasks in pages.
+    const openPage = (from: number) =>
+      supabase.from('tasks').select(TASK_COLUMNS).eq('done', false).order('due_at', { ascending: true, nullsFirst: false }).order('id', { ascending: true }).range(from, from + 999);
+    const [openFirst, done] = await Promise.all([
+      openPage(0),
       supabase.from('tasks').select(TASK_COLUMNS).eq('done', true).order('done_at', { ascending: false, nullsFirst: false }).limit(100),
     ]);
-    if (open.error) {
-      setError(open.error.message);
+    if (openFirst.error) {
+      setError(openFirst.error.message);
       return;
     }
+    let openRows = (openFirst.data ?? []) as unknown as Record<string, unknown>[];
+    for (let from = 1000; openRows.length === from && from < 5000; from += 1000) {
+      const more = await openPage(from);
+      if (more.error) break;
+      openRows = openRows.concat((more.data ?? []) as unknown as Record<string, unknown>[]);
+    }
     setError(null);
-    const rows = [...((open.data ?? []) as unknown as Record<string, unknown>[]), ...((done.data ?? []) as unknown as Record<string, unknown>[])].map(normalizeTask);
+    const rows = [...openRows, ...((done.data ?? []) as unknown as Record<string, unknown>[])].map(normalizeTask);
     setTasks(rows);
     const leadIds = Array.from(new Set(rows.map((r) => r.lead_id).filter((x): x is string => !!x)));
     const dealIds = Array.from(new Set(rows.map((r) => r.deal_id).filter((x): x is string => !!x)));
@@ -194,7 +220,7 @@ export function TasksView() {
 
   return (
     <PageContainer>
-      <PageHeader title="Tasks" subtitle={tasks ? (openCount === 0 ? 'Nothing waiting on you.' : `${openCount} open ${openCount === 1 ? 'task' : 'tasks'}, ${groups.overdue.length} overdue.`) : 'Follow-ups and to-dos.'} />
+      <PageHeader title="Tasks" subtitle={tasks ? (openCount === 0 ? 'Nothing waiting on you. Add a reminder above.' : `Your reminders and follow-ups. ${openCount} to do${groups.overdue.length ? `, ${groups.overdue.length} overdue` : ''}.`) : 'Your reminders and follow-ups.'} />
 
       <TaskQuickAdd onAdd={onAdd} />
 
@@ -215,7 +241,11 @@ export function TasksView() {
 
       {tasks && !nothing && (
         <>
-          <WeekStrip week={week} day={day} onPick={(k) => setParam({ day: day === k ? null : k })} />
+          <button type="button" onClick={toggleMore} aria-expanded={showMore || filtersOn} className="mt-3 cursor-pointer rounded text-[13px] font-medium text-primary-text hover:underline">
+            {showMore || filtersOn ? 'Hide week view and filters' : 'Show week view and filters'}
+          </button>
+          {(showMore || filtersOn) && <WeekStrip week={week} day={day} onPick={(k) => setParam({ day: day === k ? null : k })} />}
+          {(showMore || filtersOn) && (
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <SegmentedControl
               label="Priority"
@@ -236,7 +266,7 @@ export function TasksView() {
               onChange={(v) => setParam({ linked: v === 'all' ? null : v })}
               options={[
                 { id: 'all', label: 'All tasks' },
-                { id: 'linked', label: 'Linked' },
+                { id: 'linked', label: 'Linked to a lead or deal' },
                 { id: 'unlinked', label: 'Not linked' },
               ]}
             />
@@ -246,6 +276,7 @@ export function TasksView() {
               </Button>
             )}
           </div>
+          )}
         </>
       )}
 

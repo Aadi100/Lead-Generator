@@ -1,11 +1,12 @@
 "use client";
 
 import Link from 'next/link';
+import Advanced from '@/components/settings/Advanced';
 import { useMemo, useState } from 'react';
 import { useShell } from '@/components/AppShell';
 import { CatalogIcon, PlusIcon, SearchIcon, TrashIcon, XIcon } from '@/components/Icons';
 import { PageHeader } from '@/components/shell';
-import { Badge, Banner, Button, Card, EmptyState, Field, IconButton, Input, Modal, Notice, SaveBar, Skeleton, Stagger, TagInput, Toggle } from '@/components/ui';
+import { Badge, Banner, Button, Card, EmptyState, Field, IconButton, Modal, Notice, SaveBar, Skeleton, Stagger, TagInput, Toggle } from '@/components/ui';
 import { fmtDateTime, itemLabel } from '@/lib/format';
 import { useSettingForm } from '@/lib/settings';
 import { useTradeLeads, useTradingSettings } from '@/lib/trading-data';
@@ -15,7 +16,7 @@ import EntryDrawer, { type EntryKind } from './EntryDrawer';
 import JobAction from './JobAction';
 import TradingNav from './TradingNav';
 
-const OWNED: (keyof TradingSettings)[] = ['enabled', 'i_sell', 'i_want', 'games', 'extra_subreddits', 'discord', 'updated_at'];
+const OWNED: (keyof TradingSettings)[] = ['enabled', 'i_sell', 'i_want', 'games', 'extra_subreddits', 'updated_at'];
 const MAX_ENTRIES = 30;
 
 function PencilIcon({ className }: { className?: string }) {
@@ -86,7 +87,6 @@ export default function TradingCatalog() {
   const clean = (d: TradingSettings): Partial<TradingSettings> => ({
     i_sell: d.i_sell.filter((e) => e.label.trim() || e.game.trim()),
     i_want: d.i_want.filter((e) => e.label.trim() || e.game.trim()),
-    discord: { ...d.discord, channels: d.discord.channels.filter((c) => c.id.trim()).map((c) => ({ id: c.id.trim(), label: c.label.trim() || c.id.trim() })) },
   });
 
   const save = async (extra?: Partial<TradingSettings>, okText = 'Saved.'): Promise<boolean> => {
@@ -127,9 +127,6 @@ export default function TradingCatalog() {
     return m;
   }, [t.i_sell, t.i_want, leads]);
 
-  const setChannels = (channels: { id: string; label: string }[]) => form.patch({ discord: { ...t.discord, channels } });
-  const botSaved = bundle ? bundle.integrations.discord.bot_token.trim() !== '' : null;
-  const dStatus = bundle?.integrations.status.discord;
   const subs = bundle?.state.subs_ok ?? [];
   const lastRun = form.saved.last_run ?? bundle?.state.reddit_last_run ?? null;
   const lastResult = form.saved.last_result && typeof form.saved.last_result === 'object' ? Number((form.saved.last_result as Record<string, unknown>).inserted ?? 0) : null;
@@ -181,12 +178,12 @@ export default function TradingCatalog() {
     <div>
       <PageHeader
         title="My catalog"
-        subtitle="Tell me what you sell and what you want to buy. I match every new post against this list."
+        subtitle="Which games and items you deal in. I match every new post against this list."
         actions={
           <JobAction
             type="trade_scan"
             label="Find leads now"
-            runningText="Searching Reddit and Discord"
+            runningText="Searching"
             variant="primary"
             icon={<SearchIcon className="h-4 w-4" />}
             beforeStart={async () => (form.dirty ? save(undefined, 'Saved before searching.') : true)}
@@ -212,12 +209,12 @@ export default function TradingCatalog() {
           id="cat-on"
           checked={t.enabled}
           onChange={(v) => void save({ enabled: v }, v ? 'Trading search is on.' : 'Trading search is off.')}
-          label="Look for game trading leads"
-          description={lastRun ? `Checks public Reddit trading communities every 20 minutes. Last search ${fmtDateTime(lastRun)}${lastResult !== null ? `, ${lastResult} new leads` : ''}.` : 'Checks public Reddit trading communities every 20 minutes, and your Discord channels if you add them below.'}
+          label="Look for trade leads"
+          description={lastRun ? `Checks every 20 minutes. Last search ${fmtDateTime(lastRun)}${lastResult !== null ? `, ${lastResult} new leads` : ''}.` : 'Switch this on and I check public trading communities every 20 minutes.'}
         />
         <div className="mt-3">
           <Notice tone="info">
-            Many game companies do not allow selling accounts, and fake or stolen accounts are common in this market. I flag posts that look like scams, but always check the other person and use a middleman or escrow before paying.
+            Fake and stolen accounts are common here. I warn about posts that look risky, but always check the other person and use a middleman before paying.
           </Notice>
         </div>
       </Card>
@@ -227,8 +224,8 @@ export default function TradingCatalog() {
         {renderSection('want')}
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <Card title="Where I look" subtitle="Extra games and communities on top of the built-in ones">
+      <Advanced id="catalog-where" title="Show advanced" hint="Extra games and Reddit communities to watch.">
+      <div className="grid gap-4">        <Card title="Where I look" subtitle="Extra games and communities on top of the built-in ones">
           <div className="space-y-4">
             <Field label="Other games to watch" htmlFor="cat-games" hint="Games I should recognise even if they are not in my list. Press Enter after each one.">
               <TagInput id="cat-games" label="Other games to watch" value={t.games} onChange={(v) => form.patch({ games: v.map((g) => g.trim()).filter(Boolean).slice(0, 40) })} placeholder="Albion Online" />
@@ -256,51 +253,8 @@ export default function TradingCatalog() {
             </div>
           </div>
         </Card>
-
-        <Card title="Discord channels" subtitle="Optional. A Discord bot that you add to a server yourself reads the channels you list.">
-          <Toggle id="cat-dc" checked={t.discord.enabled} onChange={(v) => form.patch({ discord: { ...t.discord, enabled: v } })} label="Read Discord trading channels" description="It only reads channels the bot has been given access to." />
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
-            <span className="text-fg-subtle">Bot status:</span>
-            {botSaved === false ? (
-              <Badge tone="warning" dot>
-                No bot token yet
-              </Badge>
-            ) : dStatus ? (
-              <Badge tone={dStatus.ok ? 'success' : 'danger'} dot title={dStatus.checked_at ? `Checked ${fmtDateTime(dStatus.checked_at)}` : undefined}>
-                {dStatus.ok ? 'Working' : 'Problem'}
-              </Badge>
-            ) : (
-              <Badge dot>Not tested yet</Badge>
-            )}
-            {dStatus?.message && <span className="min-w-0 break-words text-xs text-fg-subtle">{dStatus.message}</span>}
-            <Link href="/settings?tab=connections" className="text-primary-text hover:underline">
-              Bot token and test
-            </Link>
-          </div>
-          {t.discord.enabled && (
-            <div className="mt-3 space-y-3">
-              {t.discord.channels.length === 0 && <p className="text-sm text-fg-subtle">No channels yet. Add one below.</p>}
-              {t.discord.channels.map((c, i) => (
-                <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                  <Input aria-label={`Channel ID ${i + 1}`} value={c.id} inputMode="numeric" onChange={(e) => setChannels(t.discord.channels.map((x, idx) => (idx === i ? { ...x, id: e.target.value.replace(/\D/g, '') } : x)))} placeholder="Channel ID, like 123456789012345678" />
-                  <Input aria-label={`Channel name ${i + 1}`} value={c.label} onChange={(e) => setChannels(t.discord.channels.map((x, idx) => (idx === i ? { ...x, label: e.target.value } : x)))} placeholder="Name you will recognise" />
-                  <IconButton label={`Remove channel ${i + 1}`} onClick={() => setChannels(t.discord.channels.filter((_, idx) => idx !== i))}>
-                    <XIcon className="h-4 w-4" />
-                  </IconButton>
-                </div>
-              ))}
-              <Button leftIcon={<PlusIcon className="h-4 w-4" />} onClick={() => setChannels([...t.discord.channels, { id: '', label: '' }])}>
-                Add a channel
-              </Button>
-              <ol className="list-decimal space-y-1 pl-5 text-xs text-fg-subtle">
-                <li>In Discord, open User Settings, then Advanced, and turn on Developer Mode.</li>
-                <li>Right-click the channel and choose Copy Channel ID. Paste it above.</li>
-                <li>The bot must be in that server with View Channel and Read Message History, and Message Content Intent must be on in the bot&apos;s page on the Discord developer portal. Only add the bot to servers where you are allowed to.</li>
-              </ol>
-            </div>
-          )}
-        </Card>
       </div>
+      </Advanced>
 
       {form.dirty && (
         <div className="sticky bottom-3 z-20 mt-4 overflow-hidden rounded-card border border-border shadow-float [&>div]:!m-0 [&>div]:!border-0">

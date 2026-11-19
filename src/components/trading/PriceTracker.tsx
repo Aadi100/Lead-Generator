@@ -13,6 +13,7 @@ import { marketStats } from '../../../worker/lib/price-market.mjs';
 import JobAction from './JobAction';
 import PriceHistoryChart from './PriceCharts';
 import PricePointDrawer from './PricePointDrawer';
+import Advanced from '@/components/settings/Advanced';
 
 const PAGE = 20;
 const norm = (s: string) => s.trim().toLowerCase();
@@ -45,20 +46,9 @@ export default function PriceTracker() {
     <Reveal className="mt-4">
       <Card
         title="Price tracker"
-        subtitle="Save what things really sold for, then see whether a lead's price is above or below market."
+        subtitle="Save what things really sold for, so each lead can say if its price is high or low."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={() => setRatesOpen(true)}>
-              Exchange rates
-            </Button>
-            <JobAction
-              type="recompute_price_market"
-              label="Recompute now"
-              runningText="Updating verdicts"
-              icon={<MarketIcon className="h-4 w-4" />}
-              successText={(r) => `Checked ${Number(r?.leads ?? 0)} leads against the market.`}
-              onDone={() => void reload()}
-            />
             <Button size="sm" variant="primary" leftIcon={<PlusIcon className="h-4 w-4" />} onClick={() => setDrawer({ open: true, point: null })}>
               Log a sale / price
             </Button>
@@ -71,7 +61,7 @@ export default function PriceTracker() {
           </Banner>
         )}
 
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2">
           <Select aria-label="Game" value={game} onChange={(e) => { setGame(e.target.value); setType(''); setVisible(PAGE); }}>
             <option value="">All games</option>
             {games.map((g) => (
@@ -88,13 +78,23 @@ export default function PriceTracker() {
               </option>
             ))}
           </Select>
+        </div>
+        <Advanced id="price-tracker-adv" title="Show advanced" hint="Filter by kind of price, exchange rates and recomputing verdicts.">
+          <div className="grid gap-2 sm:grid-cols-2">
           <Select aria-label="Kind of price" value={kind} onChange={(e) => { setKind(e.target.value); setVisible(PAGE); }}>
             <option value="">Sales, asking prices and offers</option>
             <option value="sold">Real sales only</option>
             <option value="asking">Asking prices only</option>
             <option value="offer">Buyer offers only</option>
           </Select>
-        </div>
+          </div>
+          <p className="text-sm text-fg-muted">Recompute re-checks every lead against the saved prices. Exchange rates are rough estimates used to compare currencies.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => setRatesOpen(true)}>
+              Exchange rates
+            </Button>
+          </div>
+        </Advanced>
 
         {loading ? (
           <Skeleton className="mt-4 h-56" />
@@ -102,7 +102,7 @@ export default function PriceTracker() {
           <EmptyState
             icon={<MarketIcon className="h-5 w-5" />}
             title="No prices saved yet"
-            text="Log a sale to start. Prices also arrive on their own from won deals, items you mark sold in Stock, and asking prices parsed from trade leads."
+            text="Log a sale to start. Prices also arrive by themselves from finished deals and items you mark sold."
             action={
               <Button variant="primary" leftIcon={<PlusIcon className="h-4 w-4" />} onClick={() => setDrawer({ open: true, point: null })}>
                 Log your first sale
@@ -146,8 +146,6 @@ export default function PriceTracker() {
                   <Th>Game and item</Th>
                   <Th>Kind</Th>
                   <Th align="right">Price</Th>
-                  <Th align="right">About USD</Th>
-                  <Th>Where</Th>
                   <Th align="right">
                     <span className="sr-only">Actions</span>
                   </Th>
@@ -169,8 +167,6 @@ export default function PriceTracker() {
                         {p.origin === 'stock' && <span className="ml-1.5 text-[11px] text-fg-subtle">from Stock</span>}
                       </Td>
                       <Td numeric>{fmtMoney(p.price, p.currency)}</Td>
-                      <Td numeric>{money(p.price_usd)}</Td>
-                      <Td className="text-fg-muted">{p.source ?? '-'}</Td>
                       <Td align="right">
                         <div className="flex justify-end gap-1">
                           {!auto && p.origin !== 'stock' && (

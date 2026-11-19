@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useShell } from '@/components/AppShell';
 import { PageHeader } from '@/components/shell';
 import { BuyersIcon, FilterIcon, SearchIcon, SellersIcon } from '@/components/Icons';
-import { Badge, Banner, Button, Checkbox, EmptyState, Input, Select, SkeletonRows, Tabs, TrustBadge, cx } from '@/components/ui';
+import { Banner, Button, Checkbox, EmptyState, Input, Select, SkeletonRows, Tabs, cx } from '@/components/ui';
 import { budgetLabel, itemLabel, timeAgo } from '@/lib/format';
 import { supabase } from '@/lib/supabaseClient';
 import { usePriceRates, useStock } from '@/lib/stock-data';
@@ -20,6 +20,8 @@ import { askVsBudget } from './StockForBuyer';
 import { PriceChip } from './TradeLeadDetail';
 import TradeLeadDetail from './TradeLeadDetail';
 import TradingNav from './TradingNav';
+import { PlainTrust } from './TradeTags';
+import Advanced from '@/components/settings/Advanced';
 
 const PAGE = 40;
 const TRUSTS = ['All', 'High', 'Medium', 'Low', 'Suspicious'] as const;
@@ -151,8 +153,8 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
 
   const title = isBuyer ? 'Buyers' : 'Sellers';
   const subtitle = isBuyer
-    ? 'People who want to buy what you sell. Reach out, agree a price and create a deal.'
-    : 'People selling what you want to buy. Check the price against your limit and the market.';
+    ? 'People who want something you sell.'
+    : 'People selling something you want to buy.';
   const Icon = isBuyer ? BuyersIcon : SellersIcon;
 
   return (
@@ -160,7 +162,7 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
       <PageHeader
         title={title}
         subtitle={subtitle}
-        actions={<JobAction type="trade_scan" label="Find leads now" runningText="Searching Reddit and Discord" variant="primary" successText={(r) => `Found ${Number(r?.inserted ?? 0)} new trade leads.`} onDone={() => void reload()} />}
+        actions={<JobAction type="trade_scan" label="Find leads now" runningText="Searching" variant="primary" successText={(r) => `Found ${Number(r?.inserted ?? 0)} new trade leads.`} onDone={() => void reload()} />}
       />
       <TradingNav />
 
@@ -209,12 +211,25 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
                   </option>
                 ))}
               </Select>
+              <Select aria-label="Sort by" value={f.sort} onChange={(e) => update({ sort: e.target.value })}>
+                {SORTS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </Select>
+              <div className="col-span-2">
+                <Checkbox checked={f.matched} onChange={(v) => update({ matched: v ? '1' : null })} label={stockMode ? 'Matches my stock only' : 'Matches my catalog only'} />
+              </div>
+            </div>
+            <Advanced id="trade-filters" title="More filters" className="mt-2 pt-1">
+              <div className="grid grid-cols-2 gap-2">
               <Input aria-label="Lowest price" type="number" min={0} inputMode="decimal" placeholder="Price from ($)" value={f.min} onChange={(e) => update({ min: e.target.value })} />
               <Input aria-label="Highest price" type="number" min={0} inputMode="decimal" placeholder="Price up to ($)" value={f.max} onChange={(e) => update({ max: e.target.value })} />
               <Select aria-label="Trust" value={f.trust} onChange={(e) => update({ trust: e.target.value })}>
                 {TRUSTS.map((t) => (
                   <option key={t} value={t === 'All' ? '' : t}>
-                    {t === 'All' ? 'Any trust level' : t === 'Suspicious' ? 'Suspicious only' : `${t} trust`}
+                    {t === 'All' ? 'Any trust level' : t === 'Suspicious' ? 'Be careful only' : t === 'High' ? 'Looks real' : t === 'Medium' ? 'Check first' : 'Be careful (low)'}
                   </option>
                 ))}
               </Select>
@@ -226,17 +241,8 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
                   </option>
                 ))}
               </Select>
-              <Select aria-label="Sort by" value={f.sort} onChange={(e) => update({ sort: e.target.value })}>
-                {SORTS.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </Select>
-              <div className="flex items-center">
-                <Checkbox checked={f.matched} onChange={(v) => update({ matched: v ? '1' : null })} label={stockMode ? 'Matches my stock only' : 'Matches my catalog only'} />
               </div>
-            </div>
+            </Advanced>
             <div className="mt-3">
               <Tabs
                 label="Status"
@@ -253,18 +259,20 @@ export default function TradeBoard({ side }: { side: TradeSide }) {
             ) : mine.length === 0 ? (
               <EmptyState
                 icon={<Icon className="h-5 w-5" />}
-                title={isBuyer ? 'No buyers found yet' : 'No sellers found yet'}
+                title={isBuyer ? 'No buyers yet' : 'No sellers yet'}
                 text={
                   bundle && !bundle.trading.enabled
-                    ? 'Game trading is switched off. Turn it on and list what you sell or want so I know what to look for.'
+                    ? 'Trading is switched off. Set it up and list what you sell or want so I know what to look for.'
                     : 'Run a search now. New posts from your trading sources show up here as they are found.'
                 }
                 action={
-                  <>
-                    <Link href="/trading/catalog" className="btn inline-flex min-h-8 items-center rounded-ctl bg-primary px-3 py-1.5 text-sm font-medium text-primary-on hover:bg-primary-hover">
-                      Set up my catalog
+                  bundle && !bundle.trading.enabled ? (
+                    <Link href="/trading/catalog" className="btn inline-flex min-h-9 items-center rounded-ctl bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-on hover:bg-primary-hover">
+                      Set up trading
                     </Link>
-                  </>
+                  ) : (
+                    <JobAction type="trade_scan" label="Find leads now" runningText="Searching" variant="primary" successText={(r) => `Found ${Number(r?.inserted ?? 0)} new trade leads.`} onDone={() => void reload()} />
+                  )
                 }
               />
             ) : shown.length === 0 ? (
@@ -335,12 +343,9 @@ function LeadRow({ lead, selected, bundle, stockMode, stockMatch, onSelect }: { 
           <p className="line-clamp-2 min-w-0 break-words text-sm font-semibold text-fg">{lead.title}</p>
           <p className="font-num shrink-0 text-sm font-semibold text-fg">{price ?? <span className="font-normal text-fg-subtle">No price</span>}</p>
         </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          {lead.game && <Badge tone="accent">{lead.game}</Badge>}
-          {lead.item_type && <Badge>{itemLabel(lead.item_type)}</Badge>}
-          <TrustBadge level={lead.trust_level} score={lead.trust_score} />
-          {lead.status !== 'New' && <Badge tone="info">{lead.status}</Badge>}
-        </div>
+        <p className="mt-1 truncate text-xs text-fg-muted">
+          {[lead.game, lead.item_type ? itemLabel(lead.item_type) : null, lead.status !== 'New' ? lead.status : null].filter(Boolean).join(' · ') || 'Game not recognised'}
+        </p>
         {stockMode ? (
           stockMatch && <p className="mt-1.5 truncate text-xs font-medium text-accent-text">{stockMatch.item.title} · {askVsBudget(stockMatch, lead)}</p>
         ) : (
@@ -351,8 +356,8 @@ function LeadRow({ lead, selected, bundle, stockMode, stockMatch, onSelect }: { 
             {lead.source_detail ?? lead.source} · {timeAgo(lead.posted_at ?? lead.created_at)}
           </p>
           <div className="flex flex-wrap items-center gap-1.5">
-            {note && <PriceChip note={note} />}
-            <PriceVerdictBadge lead={lead} />
+            {note ? <PriceChip note={note} /> : <PriceVerdictBadge lead={lead} />}
+            <PlainTrust level={lead.trust_level} score={lead.trust_score} suspicious={lead.is_suspicious} />
           </div>
         </div>
       </button>

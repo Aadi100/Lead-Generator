@@ -6,6 +6,7 @@ import { fmtDateTime } from '@/lib/format';
 import type { TargetingSettings } from '@/lib/types';
 import { useShell } from '../AppShell';
 import { Card, Field, JobNote, Spinner, TagInput, btnSecondary, inputCls } from '../ui';
+import Advanced from './Advanced';
 import SaveBar from './SettingsSaveBar';
 
 const OWNED: (keyof TargetingSettings)[] = ['keywords', 'topics', 'exclude', 'min_budget', 'work_description', 'job_description', 'updated_at'];
@@ -133,6 +134,7 @@ export default function TargetingTab() {
               <TagInput id="tg-keywords" label="Words and phrases to look for" value={t.keywords} onChange={(v) => setList('keywords', v)} placeholder="shopify store" />
             </Field>
 
+            <Advanced id="targeting" hint="Topics, words to skip and the smallest budget.">
             <Field
               label="Topics and kinds of projects"
               htmlFor="tg-topics"
@@ -170,8 +172,10 @@ export default function TargetingTab() {
               />
             </Field>
 
-            <p className="text-xs text-fg-subtle">
-              Changes apply to the next scrape run, usually within about 30 minutes. You do not need to restart anything.
+            </Advanced>
+
+            <p className="text-sm text-fg-subtle">
+              Changes apply the next time lead finders run, usually within about 30 minutes. You do not need to restart anything.
               {form.saved.updated_at ? ` Last saved ${fmtDateTime(form.saved.updated_at)}.` : ''}
             </p>
           </div>

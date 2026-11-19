@@ -65,16 +65,16 @@ Open **Settings** in the dashboard and fill in, in this order:
 1. **Profile & links**: your name, websites and social links, then press **Learn from my links**. It reads them and builds your voice, services and keywords. Sites that need a login (LinkedIn, Instagram) are reported as unreadable, never guessed.
 2. **Email sending**: SMTP or Resend, your from address, daily limit and follow-up days. Press **Send test email**.
 3. **Reply tracking** (optional): IMAP details of the inbox that receives replies. It only reads, never changes your mailbox.
-4. **Alerts** (optional): Telegram, email or WhatsApp (CallMeBot) for new high-trust leads and replies.
+4. **Alerts** (optional): email or WhatsApp (CallMeBot) for new high-trust leads and replies.
 5. **Local prospecting** (optional): cities and business types. It finds shops with no website on OpenStreetMap.
 
 **Targeting** (Settings > Targeting) tells every source what you want: words and phrases to look for, project topics, words to skip, a smallest budget, and a plain description of your work and the jobs you want. Press **Suggest keywords from my descriptions** to get a starting list. The scrapers read these settings on every run, so changes apply within about 30 minutes with no restart. Posts that match only your own words show up under the category **Other**. Your words also raise a lead's **Best match** score and shape the pitch. Your skip words hide posts, and a budget below your minimum lowers the score without hiding the lead.
 
-**Game trading** (Settings > Trading): list what you sell and what you want to buy (game, item type such as account, boosting or top-up, keywords, price limit). Lead Radar then finds buyers for what you sell and sellers for what you want in public Reddit trading communities and in Discord channels you list. Each post is read for game, item, price and side, checked for scam signs (stolen accounts, pay first, no middleman) and matched to your list. **Suggest what I can sell** compares buyer and seller posts to show where demand beats supply. Selling accounts often breaks game publishers' rules; that risk is yours.
+**Game trading** (Settings > Trading): list what you sell and what you want to buy (game, item type such as account, boosting or top-up, keywords, price limit). Lead Radar then finds buyers for what you sell and sellers for what you want in public Reddit trading communities. Each post is read for game, item, price and side, checked for scam signs (stolen accounts, pay first, no middleman) and matched to your list. **Suggest what I can sell** compares buyer and seller posts to show where demand beats supply. Selling accounts often breaks game publishers' rules; that risk is yours.
 
-**Capture** (the Capture page) is for sites that cannot be read automatically: Eldorado, G2G, Z2U, FunPay, PlayerAuctions, Discord and Telegram you have joined, forums. Drag the "Send to Lead Radar" bookmark to your bookmarks bar, open the page yourself, click it, review what it found, and save. Or paste text into the paste box.
+**Capture** (the Capture page) is for sites that cannot be read automatically: Eldorado, G2G, Z2U, FunPay, PlayerAuctions, forums. Drag the "Send to Lead Radar" bookmark to your bookmarks bar, open the page yourself, click it, review what it found, and save. Or paste text into the paste box.
 
-**Connections** (Settings > Connections) is where the optional API keys go: Serper (Google search), X, the Reddit API, a Discord bot token, and Upwork alerts through your inbox. Each has a Test connection button. A Discord webhook for alerts goes in Settings > Alerts. Telegram may be blocked on your network; Discord and email alerts are alternatives.
+**Connections** (Settings > Connections) is where the optional API keys go: Serper (Google search), X, the Reddit API, and Upwork alerts through your inbox. Each has a Test connection button. Alert email and WhatsApp details go in Settings > Alerts.
 
 What happens next:
 
@@ -101,8 +101,8 @@ Safety rules the worker always enforces: nothing is sent unless you pressed Send
 | Workflow | What it does |
 |---|---|
 | System - Heartbeat | Every 5 minutes writes `n8n_status.last_seen` so the dashboard can show that n8n is alive |
-| System - Failure alerts | The error workflow of all the others. Records the last failure in `n8n_status` and posts it to your Discord webhook (Settings > Alerts, only when alerts are enabled; the same error is reported at most once an hour) |
-| Daily summary | 08:00 (n8n's timezone): new leads, strong matches, trade matches, drafts, replies, tasks due, open deals, best three leads, sent to the Discord webhook |
+| System - Failure alerts | The error workflow of all the others. Records the last failure in `n8n_status` and posts it to your alert channels (Settings > Alerts, only when alerts are enabled; the same error is reported at most once an hour) |
+| Daily summary | 08:00 (n8n's timezone): new leads, strong matches, trade matches, drafts, replies, tasks due, open deals, best three leads, sent to your alert channels |
 | Reminders - Follow up and keep moving | Hourly: makes a task for every lead pitched 3+ days ago with no reply (and no email sequence running), and a high-priority task for every lead that replied 2+ days ago and went quiet |
 | Capture - Send anything to Lead Radar | `POST http://localhost:5678/webhook/capture` with `{"text": "...", "url": "...", "kind": "trade"}` or `{"items": [...]}`. The worker reads it like the Capture page, so a phone shortcut or another tool can send leads in |
 
@@ -121,7 +121,7 @@ Each one has a Run now button on the Sources page and a switch in Settings > Con
 
 ### Sources that need keys now live in the worker
 
-Google search (Serper), X, the Reddit API, Discord and Upwork alerts are configured in the dashboard under **Settings > Connections**, not in n8n. The old `[KEY]` n8n workflows were replaced by those worker sources and renamed `ZZ Replaced - delete me` in n8n. You can delete them there.
+Google search (Serper), X, the Reddit API and Upwork alerts are configured in the dashboard under **Settings > Connections**, not in n8n. The old `[KEY]` n8n workflows were replaced by those worker sources and renamed `ZZ Replaced - delete me` in n8n. You can delete them there.
 
 ## How the trust score works
 

@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import { hostOf, normalizeLead } from './format';
 import type { EmailEntry, EmailStatus, Lead, OutreachStatus } from './types';
 
-export const CONTACT_LEAD_CAP = 2000;
+export const CONTACT_LEAD_CAP = 5000; // loaded 1000 at a time (the server returns at most 1000 rows per request)
 
 const LEAD_COLUMNS = [
   'id', 'title', 'url', 'source', 'source_detail', 'status', 'created_at', 'posted_at', 'pitched_at', 'replied_at', 'lead_kind',
@@ -151,16 +151,31 @@ export function buildContacts(leads: Lead[], outreachByLead: Map<string, Outreac
   return out;
 }
 
+async function pagedRows(table: 'leads' | 'outreach', columns: string): Promise<{ rows: Record<string, unknown>[]; error: string | null }> {
+  const PAGE_SIZE = 1000;
+  let all: Record<string, unknown>[] = [];
+  for (let from = 0; from < CONTACT_LEAD_CAP; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) return { rows: all, error: error.message };
+    const rows = (data ?? []) as unknown as Record<string, unknown>[];
+    all = all.concat(rows);
+    if (rows.length < PAGE_SIZE) break;
+  }
+  return { rows: all, error: null };
+}
+
 export async function fetchContactSources(): Promise<{ leads: Lead[]; outreach: Map<string, OutreachState> }> {
-  const [l, o] = await Promise.all([
-    supabase.from('leads').select(LEAD_COLUMNS).order('created_at', { ascending: false }).limit(CONTACT_LEAD_CAP),
-    supabase.from('outreach').select('lead_id,status').order('created_at', { ascending: false }).limit(CONTACT_LEAD_CAP),
-  ]);
-  if (l.error) throw new Error(l.error.message);
-  const leads = ((l.data ?? []) as unknown as Record<string, unknown>[]).map(normalizeLead);
+  const [l, o] = await Promise.all([pagedRows('leads', LEAD_COLUMNS), pagedRows('outreach', 'id,lead_id,status')]);
+  if (l.error) throw new Error(l.error);
+  const leads = l.rows.map(normalizeLead);
   const outreach = new Map<string, OutreachState>();
   if (!o.error) {
-    for (const r of (o.data ?? []) as { lead_id: string; status: string }[]) {
+    for (const r of o.rows as unknown as { lead_id: string; status: string }[]) {
       const st = outreachStateOf(r.status);
       const prev = outreach.get(r.lead_id) ?? 'none';
       if (STATE_RANK[st] > STATE_RANK[prev]) outreach.set(r.lead_id, st);

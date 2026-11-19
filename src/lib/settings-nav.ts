@@ -15,48 +15,46 @@ export type SettingsTabId =
   | 'appearance'
   | 'data';
 
-export type SettingsGroup = { label: string; tabs: { id: SettingsTabId; label: string }[] };
+export type SettingsTab = { id: SettingsTabId; label: string; blurb: string };
+export type SettingsGroup = { label: string; tabs: SettingsTab[] };
 
 export const SETTINGS_GROUPS: SettingsGroup[] = [
   {
-    label: 'Profile & targeting',
+    label: 'About you',
     tabs: [
-      { id: 'profile', label: 'Profile & links' },
-      { id: 'targeting', label: 'Targeting' },
-      { id: 'writing', label: 'Writing rules' },
+      { id: 'profile', label: 'Profile & links', blurb: 'Tell me what you sell and where to find your work, so every message sounds like you.' },
+      { id: 'writing', label: 'Writing rules', blurb: 'Set the tone and rules the AI writer follows when it drafts messages for you.' },
+      { id: 'proposals', label: 'Proposals & quotes', blurb: 'Choose how your proposals and quotes look and what they say by default.' },
     ],
   },
   {
-    label: 'Outreach',
+    label: 'Finding leads',
     tabs: [
-      { id: 'email', label: 'Email sending' },
-      { id: 'imap', label: 'Reply tracking' },
-      { id: 'safety', label: 'Safety' },
+      { id: 'targeting', label: 'Targeting', blurb: 'Choose the words and topics that decide which leads are worth your time.' },
+      { id: 'connections', label: 'Connections & keys', blurb: 'Connect the services that find leads for you. Each one shows if it is working.' },
+      { id: 'prospecting', label: 'Local business search', blurb: 'Find local businesses that may need a website, app or design, city by city.' },
+      { id: 'trading', label: 'Game trading', blurb: 'Where to set up game trading: what to watch, prices and stock.' },
     ],
   },
   {
-    label: 'Sources',
+    label: 'Sending & replies',
     tabs: [
-      { id: 'connections', label: 'Connections' },
-      { id: 'alerts', label: 'Alerts' },
-      { id: 'prospecting', label: 'Local prospecting' },
-      { id: 'trading', label: 'Trading' },
+      { id: 'email', label: 'Email account', blurb: 'Choose the email account your messages go out from. Nothing sends until you press Send.' },
+      { id: 'imap', label: 'Inbox for replies', blurb: 'Let me look at your inbox so I can see when someone replies. I only read.' },
+      { id: 'safety', label: 'Safety', blurb: 'Rules that protect your name and your email, and the list of people never to contact.' },
+      { id: 'alerts', label: 'Alerts', blurb: 'Get a message the moment a strong lead arrives, so you can reply first.' },
     ],
   },
   {
-    label: 'Proposals',
-    tabs: [{ id: 'proposals', label: 'Proposals & quotes' }],
-  },
-  {
-    label: 'Appearance & data',
+    label: 'App & data',
     tabs: [
-      { id: 'appearance', label: 'Appearance' },
-      { id: 'data', label: 'Data' },
+      { id: 'appearance', label: 'Appearance & app', blurb: 'Pick light or dark, and install Lead Radar like an app on your phone or computer.' },
+      { id: 'data', label: 'Data', blurb: 'Download a copy of your leads and messages as a spreadsheet.' },
     ],
   },
 ];
 
-export const SETTINGS_TABS = SETTINGS_GROUPS.flatMap((g) => g.tabs);
+export const SETTINGS_TABS: SettingsTab[] = SETTINGS_GROUPS.flatMap((g) => g.tabs);
 
 // Older names that still resolve (the page used to use #replies).
 const ALIASES: Record<string, SettingsTabId> = { replies: 'imap' };

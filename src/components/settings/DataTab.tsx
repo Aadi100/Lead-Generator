@@ -34,7 +34,7 @@ export default function DataTab() {
   };
 
   return (
-    <Card title="Export your data" subtitle="Download a spreadsheet (CSV) copy. Big tables are read 1000 rows at a time. This only reads. It never changes or deletes anything.">
+    <Card title="Export your data" subtitle="Download a spreadsheet (CSV) copy. This only reads. It never changes or deletes anything.">
       <ul className="divide-y divide-border">
         {EXPORT_TABLES.map((t) => (
           <li key={t.table} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
@@ -43,7 +43,7 @@ export default function DataTab() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-fg">{t.label}</p>
-              <p className="text-xs text-fg-subtle" role="status" aria-live="polite">
+              <p className="text-sm text-fg-subtle" role="status" aria-live="polite">
                 {busy === t.table ? (
                   `Reading… ${progress.toLocaleString()} rows so far`
                 ) : failed[t.table] ? (

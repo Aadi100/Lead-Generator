@@ -8,6 +8,7 @@ import type { ImapState } from '@/lib/types';
 import { useShell } from '../AppShell';
 import { RefreshIcon } from '../Icons';
 import { Card, Field, JobNote, Notice, Spinner, Toggle, btnSecondary, inputCls } from '../ui';
+import Advanced from './Advanced';
 import SaveBar from './SettingsSaveBar';
 import SecretInput from './SecretInput';
 import { ResultChip } from './StatusChip';
@@ -18,6 +19,16 @@ const PRESETS = [
   { label: 'Outlook / Microsoft 365', host: 'outlook.office365.com', port: 993, secure: true },
   { label: 'Zoho', host: 'imap.zoho.com', port: 993, secure: true },
 ];
+
+// A mail server's sending address and reading address usually differ only by the first word.
+function imapHostFor(smtpHost: string): string {
+  const h = smtpHost.trim().toLowerCase();
+  if (!h) return '';
+  if (h === 'smtp.office365.com' || h === 'smtp-mail.outlook.com') return 'outlook.office365.com';
+  if (h.startsWith('smtp.')) return `imap.${h.slice(5)}`;
+  if (h.startsWith('smtp-')) return `imap-${h.slice(5)}`;
+  return h;
+}
 
 export default function RepliesTab() {
   const { pushToast } = useShell();
@@ -48,6 +59,17 @@ export default function RepliesTab() {
     return true;
   };
 
+  const useEmailAccountLogin = async () => {
+    const res = await loadSetting('smtp');
+    if (res.error || !res.value.user.trim() || !res.value.pass) {
+      pushToast('info', 'Your email account has no login saved yet. Fill in the Email account tab first, or type the inbox login below.');
+      return;
+    }
+    const s = res.value;
+    form.patch({ enabled: true, host: imapHostFor(s.host), port: 993, secure: true, user: s.user, pass: s.pass });
+    pushToast('success', 'Filled in from your email account. Press Save to keep it.');
+  };
+
   const runTest = async () => {
     if (form.dirty && !(await save())) return;
     await test.start('test_imap', {});
@@ -71,8 +93,8 @@ export default function RepliesTab() {
   return (
     <div className="space-y-4">
       <Card
-        title="Reply tracking"
-        subtitle="I look in your inbox for answers to your pitches. I only read. I never delete anything or mark messages as read."
+        title="Inbox for replies"
+        subtitle="I look in your inbox for answers to your messages. I only read. I never delete anything or mark messages as read."
       >
         {form.loading ? (
           <p className="text-sm text-fg-subtle">Loading…</p>
@@ -87,8 +109,14 @@ export default function RepliesTab() {
             />
 
             <div className="space-y-3 rounded-lg border border-border bg-surface-2 p-3">
+              <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+                <button type="button" onClick={() => void useEmailAccountLogin()} className={`${btnSecondary} min-h-9 px-3 py-1.5 text-sm`}>
+                  Use the same login as my email account
+                </button>
+                <span className="text-sm text-fg-subtle">Copies the server, login and password from the Email account tab.</span>
+              </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-fg-muted">Quick fill:</span>
+                <span className="text-sm text-fg-muted">Or quick fill:</span>
                 {PRESETS.map((p) => (
                   <button
                     key={p.label}
@@ -101,16 +129,13 @@ export default function RepliesTab() {
                 ))}
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Mail server (host)" htmlFor="imap-host" error={touched.host ? hostError(i.host) : null}>
+                <Field label="Mail server" hint="The address of your inbox provider, for example imap.gmail.com." htmlFor="imap-host" error={touched.host ? hostError(i.host) : null}>
                   <input id="imap-host" className={inputCls} onBlur={blur('host')} value={i.host} onChange={(e) => form.patch({ host: e.target.value })} placeholder="imap.gmail.com" />
                 </Field>
-                <Field label="Port" htmlFor="imap-port" error={touched.port ? portError(i.port) : null}>
-                  <input id="imap-port" type="number" className={inputCls} onBlur={blur('port')} value={i.port} onChange={(e) => form.patch({ port: Number(e.target.value) || 0 })} />
-                </Field>
-                <Field label="Username" htmlFor="imap-user">
+                <Field label="Email login (username)" htmlFor="imap-user">
                   <input id="imap-user" autoComplete="off" className={inputCls} value={i.user} onChange={(e) => form.patch({ user: e.target.value })} />
                 </Field>
-                <Field label="Password" htmlFor="imap-pass">
+                <Field label="Email password" htmlFor="imap-pass">
                   <SecretInput
                     id="imap-pass"
                     autoComplete="new-password"
@@ -118,13 +143,20 @@ export default function RepliesTab() {
                     onChange={(e) => form.patch({ pass: e.target.value })}
                   />
                 </Field>
+              </div>
+              <Advanced id="imap" hint="Port, folder and secure connection. The quick fill buttons set these for you.">
+                <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Port" htmlFor="imap-port" error={touched.port ? portError(i.port) : null}>
+                  <input id="imap-port" type="number" className={inputCls} onBlur={blur('port')} value={i.port} onChange={(e) => form.patch({ port: Number(e.target.value) || 0 })} />
+                </Field>
                 <Field label="Folder to watch" htmlFor="imap-folder">
                   <input id="imap-folder" className={inputCls} value={i.folder} onChange={(e) => form.patch({ folder: e.target.value })} />
                 </Field>
-              </div>
+                </div>
               <Toggle id="imap-secure" checked={i.secure} onChange={(v) => form.patch({ secure: v })} label="Use a secure connection" description="Leave on for port 993." />
-              <p className="text-xs text-fg-subtle">
-                Use the inbox where replies arrive, which is the &quot;Replies go to&quot; address if you set one. Gmail needs an app password and IMAP turned on in its settings.
+              </Advanced>
+              <p className="text-sm text-fg-subtle">
+                Use the inbox where replies arrive, which is the &quot;Replies go to&quot; address if you set one. Where do I get this? Gmail needs an app password and IMAP turned on in its settings.
               </p>
             </div>
           </div>
@@ -132,7 +164,7 @@ export default function RepliesTab() {
         <SaveBar dirty={form.dirty} saving={form.saving} onSave={() => void save()} onReset={form.reset} error={form.error} />
       </Card>
 
-      <Card title="Try it">
+      <Card title="Try it" subtitle="Check that the inbox works, or look for replies right now.">
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => void runTest()} disabled={test.running || !i.host.trim()} className={btnSecondary}>
             {test.running && <Spinner />}

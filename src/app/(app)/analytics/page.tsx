@@ -29,7 +29,8 @@ import { BarList, Banner, Button, Card, CountUp, EmptyState, FunnelChart, JobNot
 import { AnalyticsIcon, RefreshIcon, SparkIcon } from '@/components/Icons';
 import TimeBars from '@/components/analytics/TimeBars';
 import PerfTable from '@/components/analytics/PerfTable';
-import WhatWinsPanel from '@/components/analytics/WhatWinsPanel';
+import WhatWinsPanel, { WinsAnswer } from '@/components/analytics/WhatWinsPanel';
+import ShowDetails from '@/components/ShowDetails';
 
 type By = 'source' | 'category';
 
@@ -128,6 +129,16 @@ function AnalyticsView() {
   const perf: PerfRow[] = by === 'source' ? perfSource : perfCategory;
   const trust = useMemo(() => trustBands(leads), [leads]);
 
+  const bestSource = useMemo(() => {
+    const rows = [...perfSource].filter((r) => r.name !== 'Unknown');
+    if (rows.length === 0) return null;
+    const byOutcome = [...rows].sort((a, b) => b.won - a.won || b.replied - a.replied || b.leads - a.leads)[0];
+    if (byOutcome.won > 0 || byOutcome.replied > 0) return { name: byOutcome.name, sub: `${byOutcome.won} won, ${byOutcome.replied} replied`, outcome: true };
+    const top = [...rows].sort((a, b) => b.leads - a.leads)[0];
+    return { name: top.name, sub: `Most leads (${top.leads}). No replies or wins yet`, outcome: false };
+  }, [perfSource]);
+
+  const topSources = useMemo(() => [...perfSource].sort((a, b) => b.leads - a.leads).slice(0, 6), [perfSource]);
   const sentCount = data?.sent.length ?? 0;
   const replyCount = data?.replies.length ?? 0;
   const replyRate = pct(replyCount, sentCount);
@@ -177,7 +188,7 @@ function AnalyticsView() {
     <PageContainer>
       <PageHeader
         title="Analytics"
-        subtitle="See which leads turn into clients, how your outreach is doing, and what the system has learned from you."
+        subtitle="Plain answers about your leads, replies and wins."
         actions={
           <>
             <SegmentedControl
@@ -214,15 +225,15 @@ function AnalyticsView() {
         </Banner>
       )}
 
-      {/* KPI row */}
-      <Stagger className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* Four plain answers */}
+      <Stagger className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {loading
           ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[92px]" />)
           : [
-              <StatTile key="n" label="New leads" value={<CountUp value={leads.length} />} sub={`Last ${range} days`} tone="info" />,
-              <StatTile key="s" label="Messages sent" value={<CountUp value={sentCount} />} sub={`About ${perDay < 10 ? perDay.toFixed(1) : Math.round(perDay)} per day`} tone="primary" />,
-              <StatTile key="r" label="Reply rate" value={pctText(replyRate)} sub={`${replyCount} ${replyCount === 1 ? 'reply' : 'replies'} to ${sentCount} sent`} tone="warning" />,
-              <StatTile key="w" label="Won" value={<CountUp value={stats.won} />} sub={`Win rate ${pctText(pct(stats.won, stats.pitched))} of pitched`} tone="success" />,
+              <StatTile key="n" label="How many leads did I get?" value={<CountUp value={leads.length} />} sub={`In the last ${range} days`} tone="info" />,
+              <StatTile key="s" label="Which source works best?" value={<span className="block truncate text-2xl">{bestSource?.name ?? 'No leads yet'}</span>} sub={bestSource?.sub ?? 'Turn a source on to see this'} tone="primary" />,
+              <StatTile key="r" label="How many replies and wins?" value={<><CountUp value={replyCount} /> <span className="text-base text-fg-subtle">/</span> <CountUp value={stats.won} /></>} sub={`${replyCount === 1 ? '1 reply' : `${replyCount} replies`} to ${sentCount} sent, ${stats.won} won`} tone="success" />,
+              <WinsAnswer key="w">{(v) => <StatTile label="What wins for you" value={<span className="block truncate text-2xl">{v.value}</span>} sub={v.sub} tone="warning" />}</WinsAnswer>,
             ]}
       </Stagger>
 
@@ -242,7 +253,7 @@ function AnalyticsView() {
 
       <div className="grid gap-4 lg:grid-cols-5">
         <Reveal className="lg:col-span-2">
-          <Card title="From new lead to client" subtitle={`Leads found in the last ${range} days`} className="h-full">
+          <Card title="From new lead to client" subtitle="How many of the leads you found got pitched, answered and won." className="h-full">
             {loading ? (
               <ChartSkeleton />
             ) : (
@@ -256,7 +267,7 @@ function AnalyticsView() {
           </Card>
         </Reveal>
         <Reveal delay={60} className="lg:col-span-3">
-          <Card title="New leads over time" subtitle={range > 30 ? 'One bar per week' : 'One bar per day'} className="h-full">
+          <Card title="New leads over time" subtitle={`How many new leads showed up. One bar per ${range > 30 ? 'week' : 'day'}.`} className="h-full">
             {loading ? (
               <ChartSkeleton />
             ) : leads.length === 0 ? (
@@ -275,50 +286,9 @@ function AnalyticsView() {
         </Reveal>
       </div>
 
-      <Reveal className="mt-4">
-        <Card
-          title="What is working"
-          subtitle="Pitched means a message was sent or the lead was marked as contacted. Win rate is won divided by pitched."
-          actions={
-            <>
-              <SegmentedControl
-                label="Group by"
-                size="sm"
-                value={by}
-                onChange={(v) => setParam('by', v, 'source')}
-                options={[
-                  { id: 'source', label: 'By source' },
-                  { id: 'category', label: 'By category' },
-                ]}
-              />
-              <Button variant="secondary" size="sm" onClick={exportCsv} disabled={loading || perf.length === 0}>
-                <DownloadIcon className="h-4 w-4" />
-                Export CSV
-              </Button>
-            </>
-          }
-        >
-          {loading ? <ChartSkeleton h="h-56" /> : <PerfTable rows={perf} nameLabel={by === 'source' ? 'Source' : 'Category'} caption={`Lead performance by ${by}, last ${range} days`} />}
-        </Card>
-      </Reveal>
-
       <div className="mt-4 grid gap-4 lg:grid-cols-5">
-        <Reveal className="lg:col-span-2">
-          <Card title="How trustworthy are the leads" subtitle="Trust score from 0 to 100. Higher is safer." className="h-full">
-            {loading ? (
-              <ChartSkeleton />
-            ) : leads.length === 0 ? (
-              <p className="py-6 text-center text-sm text-fg-subtle">Trust scores appear once leads have been found.</p>
-            ) : (
-              <>
-                <BarList items={trust.rows} tone="success" format={(v) => `${v} (${pctText(pct(v, leads.length))})`} />
-                {trust.none > 0 && <p className="mt-3 text-[13px] text-fg-subtle">{trust.none} leads have no trust score yet.</p>}
-              </>
-            )}
-          </Card>
-        </Reveal>
-        <Reveal delay={60} className="lg:col-span-3">
-          <Card title="Outreach" subtitle="Messages sent and replies received" className="h-full">
+        <Reveal className="lg:col-span-3">
+          <Card title="Messages and replies" subtitle="How many messages you sent and how many people answered." className="h-full">
             {loading ? (
               <ChartSkeleton />
             ) : sentCount === 0 && replyCount === 0 ? (
@@ -347,16 +317,68 @@ function AnalyticsView() {
             )}
           </Card>
         </Reveal>
+        <Reveal delay={60} className="lg:col-span-2">
+          <Card title="Where your leads come from" subtitle="Your top sources. The small note shows replies and wins." className="h-full">
+            {loading ? (
+              <ChartSkeleton />
+            ) : topSources.length === 0 ? (
+              <p className="py-6 text-center text-sm text-fg-subtle">Sources show up once leads have been found.</p>
+            ) : (
+              <BarList items={topSources.map((r) => ({ label: r.name, value: r.leads, sub: `${r.replied} replied, ${r.won} won` }))} tone="info" format={(v) => `${v} leads`} />
+            )}
+          </Card>
+        </Reveal>
       </div>
+      <ShowDetails id="analytics" hint="Tables by source and category, how real the leads look, what the system learned and how it writes for you.">
+      <Reveal>
+        <Card
+          title="Which source or category works best"
+          subtitle="Pitched means a message was sent or the lead was marked as contacted. Win rate is won divided by pitched."
+          actions={
+            <>
+              <SegmentedControl
+                label="Group by"
+                size="sm"
+                value={by}
+                onChange={(v) => setParam('by', v, 'source')}
+                options={[
+                  { id: 'source', label: 'By source' },
+                  { id: 'category', label: 'By category' },
+                ]}
+              />
+              <Button variant="secondary" size="sm" onClick={exportCsv} disabled={loading || perf.length === 0}>
+                <DownloadIcon className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </>
+          }
+        >
+          {loading ? <ChartSkeleton h="h-56" /> : <PerfTable rows={perf} nameLabel={by === 'source' ? 'Source' : 'Category'} caption={`Lead performance by ${by}, last ${range} days`} />}
+        </Card>
+      </Reveal>
 
-      <Reveal className="mt-4">
+              <Reveal>
+          <Card title="How real do the leads look?" subtitle="Most leads should look real. The number is the trust score from 0 to 100." className="h-full">
+            {loading ? (
+              <ChartSkeleton />
+            ) : leads.length === 0 ? (
+              <p className="py-6 text-center text-sm text-fg-subtle">Trust scores appear once leads have been found.</p>
+            ) : (
+              <>
+                <BarList items={trust.rows} tone="success" format={(v) => `${v} (${pctText(pct(v, leads.length))})`} />
+                {trust.none > 0 && <p className="mt-3 text-[13px] text-fg-subtle">{trust.none} leads have no trust score yet.</p>}
+              </>
+            )}
+          </Card>
+        </Reveal>
+      <Reveal>
         <WhatWinsPanel />
       </Reveal>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Reveal>
           <Card
-            title="What the system has learned about your leads"
+            title="What the app noticed about your leads"
             subtitle={learning.generated_at ? `Updated ${fmtDateTime(learning.generated_at)}` : 'Not learned yet'}
             className="h-full"
             actions={
@@ -397,7 +419,7 @@ function AnalyticsView() {
 
         <Reveal delay={60}>
           <Card
-            title="How the system writes for you"
+            title="How the app writes for you"
             subtitle={
               rules.updated_at
                 ? `Rules ${rules.source === 'learned' ? 'learned from you' : rules.source === 'manual' ? 'written by you' : 'are the defaults'}, updated ${fmtDateTime(rules.updated_at)}`
@@ -448,7 +470,7 @@ function AnalyticsView() {
         </Reveal>
       </div>
 
-      <Reveal className="mt-4">
+      <Reveal>
         <Card
           title="Game market"
           subtitle={market.generated_at ? `Last ${market.days} days, updated ${fmtDateTime(market.generated_at)}. ${market.totals.trade_leads} trade posts counted.` : 'What people want to buy in game trading posts'}
@@ -475,6 +497,7 @@ function AnalyticsView() {
           )}
         </Card>
       </Reveal>
+      </ShowDetails>
     </PageContainer>
   );
 }

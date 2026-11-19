@@ -13,9 +13,9 @@ export default function LeadWhyRank({ lead }: { lead: Lead }) {
   const hasLearned = lead.learned_score !== null && share > 0;
 
   return (
-    <section aria-label="Why this rank" className="rounded-card border border-border bg-surface-2/50 p-3.5">
+    <section aria-label="Why it is ranked here" className="rounded-card border border-border bg-surface-2/50 p-3.5">
       <div className="flex items-center justify-between gap-2">
-        <SectionTitle>Why this rank</SectionTitle>
+        <SectionTitle>Why it is ranked here</SectionTitle>
         {rank !== null && (
           <span className="text-xs text-fg-subtle">
             Best match <span className="font-num font-semibold text-fg">{rank}</span>

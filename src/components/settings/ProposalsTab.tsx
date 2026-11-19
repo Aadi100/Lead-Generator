@@ -1,5 +1,6 @@
 "use client";
 
+import Advanced from './Advanced';
 import { useCallback, useEffect, useState } from 'react';
 import { useShell } from '../AppShell';
 import { PlusIcon, TrashIcon } from '../Icons';
@@ -197,6 +198,9 @@ export default function ProposalsTab() {
           <Field label="Website" htmlFor="ps-web">
             <Input id="ps-web" value={draft.website} onChange={(e) => patch({ website: e.target.value })} />
           </Field>
+        </div>
+        <Advanced id="proposals" hint="Phone, currency, payment terms, how long a proposal is valid and default terms.">
+          <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Phone (optional)" htmlFor="ps-phone">
             <Input id="ps-phone" value={draft.phone} onChange={(e) => patch({ phone: e.target.value })} />
           </Field>
@@ -216,7 +220,8 @@ export default function ProposalsTab() {
               <Textarea id="ps-terms" rows={4} value={draft.terms} onChange={(e) => patch({ terms: e.target.value })} />
             </Field>
           </div>
-        </div>
+          </div>
+        </Advanced>
         <SaveBar dirty={dirty} saving={saving} error={error} onSave={() => void save()} onReset={() => setDraft(saved)} />
       </Card>
 

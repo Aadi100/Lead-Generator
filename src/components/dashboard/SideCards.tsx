@@ -68,7 +68,7 @@ export function TradingCard({ raw, trading }: { raw: DashRaw; trading: DashModel
         <PanelEmpty
           icon={<TradingIcon className="h-5 w-5" />}
           title="Trading is switched off"
-          text="Tell Lead Radar what you sell or want and it will find game buyers and sellers for you."
+          text="Tell Lead Radar what you sell or want and it will find game buyers and sellers."
           action={
             <Link href="/trading/catalog" className={buttonClass('primary', 'sm')}>
               Set up trading

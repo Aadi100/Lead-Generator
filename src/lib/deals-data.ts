@@ -4,11 +4,33 @@ import { hostOf, normalizeLead } from './format';
 import { normalizeDeal, type Deal, type DealKind, type DealStage } from './types-platform';
 import type { Lead } from './types';
 
-export const DEAL_CAP = 2000;
+export const DEAL_CAP = 5000;
+export const STAGE_HINT: Record<DealStage, string> = {
+  talking: 'Still chatting, nothing agreed',
+  negotiating: 'Working out price and scope',
+  agreed: 'You both said yes',
+  paid: 'The client has paid',
+  delivered: 'You handed over the work',
+  done: 'Finished and closed',
+  cancelled: 'Did not go ahead',
+  disputed: 'There is a problem to sort out',
+};
+
 export const CLOSED_STAGES: DealStage[] = ['done', 'cancelled'];
 
 export async function fetchDeals(): Promise<Deal[]> {
-  const { data, error } = await supabase.from('deals').select('*').order('created_at', { ascending: false }).limit(DEAL_CAP);
+  // Supabase returns at most 1000 rows per request, so read in pages.
+  const data: unknown[] = [];
+  let error: { message: string } | null = null;
+  for (let from = 0; from < DEAL_CAP; from += 1000) {
+    const res = await supabase.from('deals').select('*').order('created_at', { ascending: false }).range(from, from + 999);
+    if (res.error) {
+      error = res.error;
+      break;
+    }
+    data.push(...(res.data ?? []));
+    if ((res.data ?? []).length < 1000) break;
+  }
   if (error) throw new Error(error.message);
   return ((data ?? []) as Record<string, unknown>[]).map(normalizeDeal);
 }

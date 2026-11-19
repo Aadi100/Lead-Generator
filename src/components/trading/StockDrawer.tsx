@@ -19,6 +19,8 @@ const fromItem = (i: StockItem): Draft => ({
 const numOrNull = (s: string) => (s.trim() === '' ? null : Number(s));
 
 /** Add or edit one stock item. */
+import Advanced from '@/components/settings/Advanced';
+
 export default function StockDrawer({ open, item, games, onClose, onSaved }: { open: boolean; item: StockItem | null; games: string[]; onClose: () => void; onSaved: () => void }) {
   const { pushToast } = useShell();
   const [d, setD] = useState<Draft>(blank);
@@ -69,7 +71,7 @@ export default function StockDrawer({ open, item, games, onClose, onSaved }: { o
       open={open}
       onClose={onClose}
       title={item ? 'Edit stock item' : 'Add to stock'}
-      description="Buyer matches only show items you have in stock. Prices are per unit."
+      description="Add something you have to sell. Prices are per unit."
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
@@ -119,18 +121,20 @@ export default function StockDrawer({ open, item, games, onClose, onSaved }: { o
             </Select>
           </Field>
         </div>
+        <Field label="Details (optional)" htmlFor="st-desc" hint="Rank, level, skins, server. Words here help match buyers.">
+          <Textarea id="st-desc" rows={3} value={d.description} onChange={(e) => set({ description: e.target.value })} />
+        </Field>
+        <Advanced id="stock-form" title="Show advanced" hint="What you paid, where it is listed and private notes.">
         <Field label="What you paid (optional)" htmlFor="st-cost" hint="Per unit, same currency. Used to work out profit when you sell." error={touched && bad.cost ? 'A number, 0 or more.' : null}>
           <Input id="st-cost" type="number" min={0} step="any" inputMode="decimal" value={d.cost} onChange={(e) => set({ cost: e.target.value })} invalid={touched && bad.cost} />
         </Field>
         <Field label="Listed on" htmlFor="st-listed" hint="Platforms where it is for sale. Press Enter after each one.">
           <TagInput id="st-listed" label="Listed on" value={d.listed_on} onChange={(v) => set({ listed_on: v })} placeholder={PLATFORMS.slice(0, 3).join(', ')} />
         </Field>
-        <Field label="Details (optional)" htmlFor="st-desc" hint="Rank, level, skins, server. Words here help match buyers.">
-          <Textarea id="st-desc" rows={3} value={d.description} onChange={(e) => set({ description: e.target.value })} />
-        </Field>
         <Field label="Private notes (optional)" htmlFor="st-notes">
           <Textarea id="st-notes" rows={2} value={d.notes} onChange={(e) => set({ notes: e.target.value })} />
         </Field>
+        </Advanced>
       </div>
     </Drawer>
   );

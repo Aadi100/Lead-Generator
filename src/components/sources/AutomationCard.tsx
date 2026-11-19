@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import Advanced from '@/components/settings/Advanced';
 import { Badge, Card, cx, type Tone } from '@/components/ui';
 import { timeAgo } from '@/lib/format';
 import type { SourcesData } from '@/lib/sources-data';
@@ -40,26 +41,26 @@ export function AutomationCard({ data }: { data: SourcesData }) {
 
   const items: Item[] = [
     {
-      label: 'Worker',
-      value: ctx.workerOnline ? 'Online' : 'Offline',
+      label: 'Background helper',
+      value: ctx.workerOnline ? 'Running' : 'Offline',
       tone: ctx.workerOnline ? 'success' : 'danger',
-      detail: ctx.workerOnline ? `Last check-in ${worker.last_seen ? timeAgo(worker.last_seen, ctx.now) : 'just now'}. Runs enrichment, drafts, sending and scans.` : worker.last_seen ? `Last seen ${timeAgo(worker.last_seen, ctx.now)}. Run npm run worker in the project folder.` : 'It has never checked in. Run npm run worker in the project folder.',
+      detail: ctx.workerOnline ? `Last check-in ${worker.last_seen ? timeAgo(worker.last_seen, ctx.now) : 'just now'}. It writes, sends and searches for you.` : worker.last_seen ? `Last seen ${timeAgo(worker.last_seen, ctx.now)}. Start it so sending and writing work.` : 'It has never checked in. Start it so sending and writing work.',
     },
     {
-      label: 'Claude CLI',
+      label: 'AI writer',
       value: !ctx.workerOnline ? 'Unknown' : worker.claude.available ? 'Ready' : 'Missing',
       tone: !ctx.workerOnline ? 'neutral' : worker.claude.available ? 'success' : 'warning',
-      detail: worker.claude.available ? `Writes emails with your Claude plan${worker.claude.version ? ` (${worker.claude.version})` : ''}.` : 'Without it, pitches are written from simple templates.',
+      detail: worker.claude.available ? `Writes emails for you${worker.claude.version ? ` (${worker.claude.version})` : ''}.` : 'Without it, messages are written from simple templates.',
     },
     {
-      label: 'n8n scrapers',
+      label: 'Lead finders',
       value: ctx.n8nOnline ? (errRecent ? 'Online, 1 failing' : 'Online') : 'Offline',
       tone: !ctx.n8nOnline ? 'danger' : errRecent ? 'warning' : 'success',
       detail: ctx.n8nOnline
-        ? `Last heartbeat ${n8nSeen}.${errRecent && err ? ` ${err.workflow || 'A workflow'} failed${err.node ? ` at "${err.node}"` : ''}.` : ''}`
+        ? `Last check-in ${n8nSeen}.${errRecent && err ? ` ${err.workflow || 'A workflow'} failed${err.node ? ` at "${err.node}"` : ''}.` : ''}`
         : n8nSeen
-          ? `Last heartbeat ${n8nSeen}. Start n8n so Reddit, Freelancer and other feeds run.`
-          : 'No heartbeat yet. Start n8n and switch the Heartbeat workflow on.',
+          ? `Last check-in ${n8nSeen}. Start the lead finders so new leads arrive.`
+          : 'No check-in yet. Start the lead finders (n8n).',
     },
     {
       label: 'Sending',
@@ -81,19 +82,21 @@ export function AutomationCard({ data }: { data: SourcesData }) {
 
   return (
     <Card
-      title="Automation health"
+      title="Is everything running?"
       subtitle={allGood ? 'Everything that finds and sends leads is running.' : 'Something needs a look before leads can flow normally.'}
-      actions={<Badge tone={allGood ? 'success' : 'warning'} dot>{allGood ? 'All systems go' : 'Needs attention'}</Badge>}
+      actions={<Badge tone={allGood ? 'success' : 'warning'} dot>{allGood ? 'All good' : 'Needs a look'}</Badge>}
     >
+      <Advanced id="sources-health" title="Show details" className="mt-0 border-t-0 pt-0">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {items.map((it) => (
           <Cell key={it.label} item={it} />
         ))}
       </div>
+      </Advanced>
       {errRecent && err && (
         <div role="alert" className="mt-3 rounded-card border border-danger-border bg-danger-soft px-3.5 py-2.5 text-[13px] text-fg">
           <p className="font-semibold">
-            Last n8n failure: {err.workflow || 'unknown workflow'}
+            Last lead finder failure: {err.workflow || 'unknown workflow'}
             {err.node ? ` / ${err.node}` : ''} <span className="font-normal text-fg-muted">({timeAgo(err.at as string, ctx.now)}, {ctx.n8n.errors_total} in total)</span>
           </p>
           <p className="mt-0.5 break-words text-fg-muted">{err.message}</p>

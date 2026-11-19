@@ -5,11 +5,11 @@ import { InfoIcon } from '@/components/Icons';
 import { SOURCE_RULES, type SourceStatus } from '@/lib/sources-model';
 
 export const STATUS_LABEL: Record<SourceStatus, string> = {
-  healthy: 'Healthy',
+  healthy: 'Working',
   quiet: 'Quiet',
-  needs_key: 'Needs key',
+  needs_key: 'Needs a key',
   off: 'Off',
-  problem: 'Problem',
+  problem: 'Not working',
 };
 
 const TONE: Record<SourceStatus, Tone> = { healthy: 'success', quiet: 'info', needs_key: 'warning', off: 'neutral', problem: 'danger' };
@@ -48,7 +48,7 @@ export function StatusRules() {
             );
           })}
         </ul>
-        <p className="mt-2 text-fg-subtle">Checks refresh every 20 seconds. Hover a status in the table to see why that source got it.</p>
+        <p className="mt-2 text-fg-subtle">Checks refresh every 20 seconds. Hover a status to see why.</p>
       </div>
     </Popover>
   );

@@ -110,10 +110,10 @@ export default function ContactsView() {
     <PageContainer>
       <PageHeader
         title="Contacts"
-        subtitle={loading ? 'Everyone your leads have led to, in one place.' : `${contacts.length} people and companies from your most recent ${Math.min(leads?.length ?? 0, CONTACT_LEAD_CAP)} leads. ${withEmail} have an email.`}
+        subtitle={loading ? 'The people and companies behind your leads, in one place.' : `The people and companies behind your leads: ${contacts.length.toLocaleString('en-US')} found, ${withEmail.toLocaleString('en-US')} with an email.${(leads?.length ?? 0) >= CONTACT_LEAD_CAP ? ` Built from your newest ${CONTACT_LEAD_CAP.toLocaleString('en-US')} leads.` : ''}`}
         actions={
-          <Button onClick={exportCsv} disabled={!filtered.length}>
-            Export CSV{filtersActive ? ' (filtered)' : ''}
+          <Button variant="secondary" onClick={exportCsv} disabled={!filtered.length}>
+            Download list (CSV){filtersActive ? ', filtered' : ''}
           </Button>
         }
       />
@@ -128,11 +128,11 @@ export default function ContactsView() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[200px] flex-1">
             <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
-            <Input aria-label="Search contacts" value={qText} onChange={(e) => setQText(e.target.value)} placeholder="Search name, email, phone..." className="pl-8" />
+            <Input aria-label="Search contacts" value={qText} onChange={(e) => setQText(e.target.value)} placeholder="Search by name, email or phone" className="pl-8" />
           </div>
           <div className="w-40">
-            <Select aria-label="Source" value={source} onChange={(e) => setParams({ source: e.target.value })}>
-              <option value="">All sources</option>
+            <Select aria-label="Where it was found" value={source} onChange={(e) => setParams({ source: e.target.value })}>
+              <option value="">Anywhere found</option>
               {sources.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -141,8 +141,8 @@ export default function ContactsView() {
             </Select>
           </div>
           <div className="w-36">
-            <Select aria-label="Lead status" value={status} onChange={(e) => setParams({ status: e.target.value })}>
-              <option value="">Any status</option>
+            <Select aria-label="Lead stage" value={status} onChange={(e) => setParams({ status: e.target.value })}>
+              <option value="">Any stage</option>
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -160,10 +160,10 @@ export default function ContactsView() {
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Chip selected={hasEmail} onClick={() => setParams({ email: hasEmail ? null : '1' })}>
-            Has email
+            Has an email
           </Chip>
           <Chip selected={verified} onClick={() => setParams({ verified: verified ? null : '1' })}>
-            Verified email
+            Email checked and working
           </Chip>
           {filtersActive && (
             <Button variant="ghost" size="sm" onClick={() => { setQText(''); router.replace(pathname, { scroll: false }); }}>
@@ -202,15 +202,13 @@ export default function ContactsView() {
             <Table caption="Contacts">
               <THead>
                 <tr>
-                  <Th>Contact</Th>
-                  <Th>Owner</Th>
-                  <Th>Best email</Th>
+                  <Th>Name</Th>
+                  <Th>Email</Th>
                   <Th>Phone</Th>
-                  <Th>Social</Th>
                   <Th align="right">Leads</Th>
                   <Th>Last activity</Th>
-                  <Th>Outreach</Th>
-                  <Th className="w-10">
+                  <Th>Reached out?</Th>
+                  <Th className="w-28">
                     <span className="sr-only">Actions</span>
                   </Th>
                 </tr>
@@ -229,17 +227,7 @@ export default function ContactsView() {
                       >
                         {c.name}
                       </button>
-                      <p className="truncate text-xs text-fg-subtle">{c.host && c.host !== c.name ? c.host : c.person && c.person !== c.name ? c.person : ' '}</p>
-                    </Td>
-                    <Td className="max-w-[180px]">
-                      {c.owner ? (
-                        <>
-                          <p className="truncate">{c.owner}</p>
-                          {c.ownerTitle && <p className="truncate text-xs text-fg-subtle">{c.ownerTitle}</p>}
-                        </>
-                      ) : (
-                        <span className="text-fg-subtle" aria-label="Not found">&mdash;</span>
-                      )}
+                      <p className="truncate text-[13px] text-fg-subtle">{c.owner ? `${c.owner}${c.ownerTitle ? `, ${c.ownerTitle}` : ''}` : c.host && c.host !== c.name ? c.host : c.person && c.person !== c.name ? c.person : ' '}</p>
                     </Td>
                     <Td className="max-w-[240px]">
                       {c.bestEmail ? (
@@ -252,18 +240,15 @@ export default function ContactsView() {
                       )}
                     </Td>
                     <Td className="whitespace-nowrap text-xs">{c.phones[0] ?? <span className="text-fg-subtle" aria-label="None">&mdash;</span>}</Td>
-                    <Td>
-                      <SocialLinks socials={c.socials} dash />
-                    </Td>
                     <Td numeric>{c.leads.length}</Td>
                     <Td className="whitespace-nowrap text-fg-muted">{timeAgo(c.lastActivity)}</Td>
                     <Td>
                       <OutreachChip state={c.outreach} />
                     </Td>
                     <Td>
-                      <IconButton label={c.bestEmail ? `Copy email for ${c.name}` : 'No email to copy'} size="sm" disabled={!c.bestEmail} onClick={(e) => { e.stopPropagation(); void copyEmail(c); }}>
-                        <CopyIcon className="h-4 w-4" />
-                      </IconButton>
+                      <Button size="sm" aria-label={c.bestEmail ? `Copy email for ${c.name}` : 'No email to copy'} disabled={!c.bestEmail} leftIcon={<CopyIcon className="h-3.5 w-3.5" />} onClick={(e) => { e.stopPropagation(); void copyEmail(c); }}>
+                        Copy email
+                      </Button>
                     </Td>
                   </Tr>
                 ))}

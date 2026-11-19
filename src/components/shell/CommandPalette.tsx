@@ -97,18 +97,18 @@ export default function CommandPalette({
       { id: 'a-task', group: 'Actions', label: 'New task', icon: <TasksIcon className={ic} />, keywords: 'todo follow-up reminder add create', run: () => { onClose(); requestNewTask(); } },
       { id: 'a-lead', group: 'Actions', label: 'Add a lead (Capture)', icon: <ArrowRightIcon className={ic} />, keywords: 'paste bookmarklet new lead', run: () => go('/capture') },
       { id: 'a-deal', group: 'Actions', label: 'New deal', icon: <ArrowRightIcon className={ic} />, keywords: 'order sale create', run: () => go('/deals?new=1') },
-      { id: 'a-trade', group: 'Actions', label: 'Find trade leads now', hint: 'Asks the worker', icon: <TradingIcon className={ic} />, keywords: 'scan game buyers sellers', run: () => queue('trade_scan', 'Asked the worker to look for trade leads.') },
-      { id: 'a-sell', group: 'Actions', label: 'Suggest what I can sell', hint: 'Asks the worker', icon: <SparkIcon className={ic} />, keywords: 'market ideas demand', run: () => queue('suggest_trading', 'Asked the worker for selling ideas.') },
-      { id: 'a-learn', group: 'Actions', label: 'Refresh learning', hint: 'Asks the worker', icon: <RefreshIcon className={ic} />, keywords: 'filters insights recalc', run: () => queue('learn_filters', 'Asked the worker to refresh what it learned.') },
-      { id: 'a-replies', group: 'Actions', label: 'Check for replies now', hint: 'Asks the worker', icon: <RefreshIcon className={ic} />, keywords: 'inbox imap', run: () => queue('check_replies', 'Asked the worker to check your inbox.') },
-      { id: 'a-prospects', group: 'Actions', label: 'Find local prospects now', hint: 'Asks the worker', icon: <RefreshIcon className={ic} />, keywords: 'openstreetmap shops no website', run: () => queue('prospect_local', 'Asked the worker to look for local prospects.') },
+      { id: 'a-trade', group: 'Actions', label: 'Find trade leads now', hint: 'Asks the background helper', icon: <TradingIcon className={ic} />, keywords: 'scan game buyers sellers', run: () => queue('trade_scan', 'Asked the background helper to look for trade leads.') },
+      { id: 'a-sell', group: 'Actions', label: 'Suggest what I can sell', hint: 'Asks the background helper', icon: <SparkIcon className={ic} />, keywords: 'market ideas demand', run: () => queue('suggest_trading', 'Asked the background helper for selling ideas.') },
+      { id: 'a-learn', group: 'Actions', label: 'Refresh learning', hint: 'Asks the background helper', icon: <RefreshIcon className={ic} />, keywords: 'filters insights recalc', run: () => queue('learn_filters', 'Asked the background helper to refresh what it learned.') },
+      { id: 'a-replies', group: 'Actions', label: 'Check for replies now', hint: 'Asks the background helper', icon: <RefreshIcon className={ic} />, keywords: 'inbox imap', run: () => queue('check_replies', 'Asked the background helper to check your inbox.') },
+      { id: 'a-prospects', group: 'Actions', label: 'Find local prospects now', hint: 'Asks the background helper', icon: <RefreshIcon className={ic} />, keywords: 'openstreetmap shops no website', run: () => queue('prospect_local', 'Asked the background helper to look for local prospects.') },
       { id: 't-light', group: 'Actions', label: 'Theme: Light', icon: theme === 'light' ? <CheckIcon className={ic} /> : <SunIcon className={ic} />, keywords: 'appearance bright', run: () => { setTheme('light'); onClose(); } },
       { id: 't-dark', group: 'Actions', label: 'Theme: Dark', icon: theme === 'dark' ? <CheckIcon className={ic} /> : <MoonIcon className={ic} />, keywords: 'appearance night', run: () => { setTheme('dark'); onClose(); } },
       { id: 't-system', group: 'Actions', label: 'Theme: Follow my system', icon: theme === 'system' ? <CheckIcon className={ic} /> : <MonitorIcon className={ic} />, keywords: 'appearance auto', run: () => { setTheme('system'); onClose(); } },
     );
     for (const item of ALL_ITEMS) {
       const Icon = item.icon;
-      list.push({ id: `p-${item.id}`, group: 'Pages', label: item.label, hint: groupOf(item.id)?.id === 'trading' ? `Game Trading · ${item.description}` : item.description, icon: <Icon className={ic} />, keywords: item.keywords, run: () => go(item.href) });
+      list.push({ id: `p-${item.id}`, group: 'Pages', label: item.label, hint: groupOf(item.id)?.id === 'trading' ? `Game trading · ${item.description}` : item.description, icon: <Icon className={ic} />, keywords: item.keywords, run: () => go(item.href) });
     }
     for (const t of SETTINGS_TABS) {
       list.push({

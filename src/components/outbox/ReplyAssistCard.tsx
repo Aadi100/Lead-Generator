@@ -8,8 +8,8 @@ import { ASSIST_CATEGORY, addToSuppressions, createFollowupTask, isSuppressed } 
 import type { Lead, OutreachRow, ReplyRow, SendingSettings, Status } from '@/lib/types';
 import type { AssistActionId } from '@/lib/types-intel';
 import type { ToastItem } from '@/components/ui';
-import { Badge, Button, JobNote, Notice, Spinner } from '@/components/ui';
-import { CalendarIcon, CheckIcon, MailIcon, ShieldIcon, SparkIcon } from '@/components/Icons';
+import { Badge, Button, JobNote, MenuItem, Notice, Popover, Spinner } from '@/components/ui';
+import { CalendarIcon, CheckIcon, ChevronIcon, MailIcon, ShieldIcon, SparkIcon } from '@/components/Icons';
 import DraftPanel from '@/components/DraftPanel';
 
 type Props = {
@@ -87,7 +87,7 @@ export default function ReplyAssistCard({ reply, lead, draft, sending, sentToday
       setOpen(true);
       if (!draft) {
         setBusyAction(null);
-        pushToast('info', 'There is no draft yet. Press Suggest reply.');
+        pushToast('info', 'There is no draft yet. Press Suggest an answer.');
         return;
       }
     }
@@ -99,38 +99,36 @@ export default function ReplyAssistCard({ reply, lead, draft, sending, sentToday
     }
   };
 
-  const cat = assist ? ASSIST_CATEGORY[assist.classification] : null;
   const stop = assist?.classification === 'unsubscribe';
   const draftSent = draft && draft.status !== 'draft' && draft.status !== 'failed';
 
   return (
-    <section aria-label="Reply assistant" className="rounded-card border border-primary-border bg-primary-soft/40 p-3.5">
+    <section aria-label="Suggested answer" className="rounded-card border border-primary-border bg-primary-soft/40 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
-          <SparkIcon className="h-3.5 w-3.5 text-primary-text" aria-hidden="true" />
-          Reply assistant
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-fg">
+          <SparkIcon className="h-4 w-4 text-primary-text" aria-hidden="true" />
+          Suggested answer
         </h3>
-        <Button size="sm" variant="secondary" onClick={() => void suggest()} disabled={pending} leftIcon={pending ? <Spinner className="h-4 w-4" /> : <SparkIcon className="h-4 w-4" />}>
-          {pending ? 'Reading the reply…' : assist ? 'Suggest again' : 'Suggest reply'}
+        <Button size="sm" variant={assist ? 'ghost' : 'secondary'} onClick={() => void suggest()} disabled={pending} leftIcon={pending ? <Spinner className="h-4 w-4" /> : <SparkIcon className="h-4 w-4" />}>
+          {pending ? 'Reading the reply…' : assist ? 'Try again' : 'Suggest an answer'}
         </Button>
       </div>
       <JobNote phase={job.phase} error={job.error} runningText="Reading their message and writing an answer. This takes about half a minute…" />
-      {!workerOnline && !assist && <p className="mt-2 text-xs text-warning">The worker is off, so the suggestion waits until you start it.</p>}
+      {!workerOnline && !assist && <p className="mt-2 text-xs text-warning">The background helper is offline, so the suggestion waits until you start it.</p>}
 
       {!assist ? (
         <p className="mt-2 text-sm text-fg-muted">
           {reply.assist_status === 'failed'
-            ? 'The last attempt failed. Press Suggest reply to try again.'
+            ? 'The last attempt failed. Press Suggest an answer to try again.'
             : pending
-              ? 'The worker is reading this reply. It appears here in a moment.'
-              : 'Get a classification, a next step and a drafted answer. Nothing is sent until you click Send.'}
+              ? 'The AI writer is reading this reply. It appears here in a moment.'
+              : 'Get a short summary, a next step and a drafted answer. Nothing is sent until you click Send.'}
         </p>
       ) : (
         <div className="mt-2.5 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            {cat && <Badge tone={cat.tone}>{cat.label}</Badge>}
-            {assist.mode === 'template' && <Badge tone="warning">Written from a template</Badge>}
-            {suppressed && <Badge tone="neutral" icon={<ShieldIcon className="h-3 w-3" aria-hidden="true" />}>In do-not-contact</Badge>}
+            {assist.mode === 'template' && <Badge tone="warning">Written from a template, read it carefully</Badge>}
+            {suppressed && <Badge tone="neutral" icon={<ShieldIcon className="h-3 w-3" aria-hidden="true" />}>On your do-not-contact list</Badge>}
           </div>
           {assist.summary && <p className="break-words text-sm text-fg">{assist.summary}</p>}
 
@@ -142,29 +140,70 @@ export default function ReplyAssistCard({ reply, lead, draft, sending, sentToday
 
           {assist.next_step && (
             <div>
-              <p className="text-xs font-semibold text-fg-subtle">Suggested next step</p>
+              <p className="text-[13px] font-semibold text-fg-subtle">What to do next</p>
               {!stop && <p className="mt-0.5 break-words text-sm text-fg-muted">{assist.next_step.reason}</p>}
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                {assist.actions.map((a) => {
-                  const isDone = done.has(a.id) || (a.id === 'add_suppression' && suppressed);
-                  const needsDraft = NEEDS_DRAFT.includes(a.id);
-                  const label = needsDraft && draft ? 'Open draft' : a.label;
+                {(() => {
+                  const render = (a: (typeof assist.actions)[number], big: boolean) => {
+                    const isDone = done.has(a.id) || (a.id === 'add_suppression' && suppressed);
+                    const needsDraft = NEEDS_DRAFT.includes(a.id);
+                    const label = needsDraft && draft ? 'Open the drafted answer' : a.label;
+                    return { a, isDone, needsDraft, label, big };
+                  };
+                  const primary = assist.actions.find((a) => a.primary) ?? assist.actions[0];
+                  const others = assist.actions.filter((a) => a !== primary);
+                  const p = primary ? render(primary, true) : null;
                   return (
-                    <Button
-                      key={a.id}
-                      size="sm"
-                      variant={a.primary && !isDone ? 'primary' : 'secondary'}
-                      disabled={isDone || busyAction !== null || (needsDraft && !draft && !pending)}
-                      loading={busyAction === a.id}
-                      leftIcon={
-                        isDone ? <CheckIcon className="h-4 w-4" /> : a.id === 'create_task' ? <CalendarIcon className="h-4 w-4" /> : a.id === 'add_suppression' ? <ShieldIcon className="h-4 w-4" /> : needsDraft ? <MailIcon className="h-4 w-4" /> : undefined
-                      }
-                      onClick={() => void run(a.id)}
-                    >
-                      {isDone ? (a.id === 'add_suppression' ? 'In do-not-contact' : `${a.label}: done`) : label}
-                    </Button>
+                    <>
+                      {p && (
+                        <Button
+                          size="md"
+                          variant={p.isDone ? 'secondary' : 'primary'}
+                          disabled={p.isDone || busyAction !== null || (p.needsDraft && !draft && !pending)}
+                          loading={busyAction === p.a.id}
+                          leftIcon={p.isDone ? <CheckIcon className="h-4 w-4" /> : p.a.id === 'create_task' ? <CalendarIcon className="h-4 w-4" /> : p.a.id === 'add_suppression' ? <ShieldIcon className="h-4 w-4" /> : p.needsDraft ? <MailIcon className="h-4 w-4" /> : undefined}
+                          onClick={() => void run(p.a.id)}
+                        >
+                          {p.isDone ? (p.a.id === 'add_suppression' ? 'On do-not-contact list' : `${p.a.label}: done`) : p.label}
+                        </Button>
+                      )}
+                      {others.length > 0 && (
+                        <Popover
+                          role="menu"
+                          align="start"
+                          width="w-64"
+                          label="Other next steps"
+                          trigger={({ open: _o, ...tp }) => (
+                            <Button {...tp} size="md" variant="ghost" rightIcon={<ChevronIcon className="h-4 w-4" />}>
+                              Other steps
+                            </Button>
+                          )}
+                        >
+                          {(close) => (
+                            <div className="p-1.5">
+                              {others.map((o) => {
+                                const r = render(o, false);
+                                return (
+                                  <MenuItem
+                                    key={o.id}
+                                    disabled={r.isDone || busyAction !== null || (r.needsDraft && !draft && !pending)}
+                                    icon={r.isDone ? <CheckIcon className="h-4 w-4" /> : undefined}
+                                    onClick={() => {
+                                      void run(o.id);
+                                      close();
+                                    }}
+                                  >
+                                    {r.isDone ? (o.id === 'add_suppression' ? 'On do-not-contact list' : `${o.label}: done`) : r.label}
+                                  </MenuItem>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </Popover>
+                      )}
+                    </>
                   );
-                })}
+                })()}
               </div>
             </div>
           )}
@@ -172,9 +211,9 @@ export default function ReplyAssistCard({ reply, lead, draft, sending, sentToday
           {draft && lead && (
             <div className="border-t border-border pt-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-fg-subtle">Drafted reply {draftSent ? '(already handled)' : 'for you to review'}</p>
+                <p className="text-[13px] font-semibold text-fg-subtle">Your drafted answer {draftSent ? '(already handled)' : '(edit it, then send)'}</p>
                 <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="rounded text-sm font-medium text-primary-text hover:underline">
-                  {open ? 'Hide draft' : 'Open draft'}
+                  {open ? 'Hide' : 'Show'}
                 </button>
               </div>
               {open && (

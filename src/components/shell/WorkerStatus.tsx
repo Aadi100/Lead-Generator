@@ -5,26 +5,26 @@ import { cx } from '@/components/ui';
 import type { LiveState, WorkerInfo } from './types';
 
 export function workerTone(worker: WorkerInfo) {
-  if (!worker.loaded) return { dot: 'bg-fg-subtle', label: 'Checking worker', short: 'Checking' };
-  if (worker.online) return { dot: 'bg-success-solid', label: worker.claude ? 'Worker on · AI ready' : 'Worker on · no AI', short: 'Worker on' };
-  return { dot: 'bg-danger-solid', label: 'Worker off', short: 'Worker off' };
+  if (!worker.loaded) return { dot: 'bg-fg-subtle', label: 'Checking helper', short: 'Checking' };
+  if (worker.online) return { dot: 'bg-success-solid', label: worker.claude ? 'Helper running' : 'Helper running · AI writer off', short: 'Helper running' };
+  return { dot: 'bg-danger-solid', label: 'Helper offline', short: 'Helper offline' };
 }
 
 function Explain({ worker }: { worker: WorkerInfo }) {
   return (
     <div className="p-3.5 text-[13px] leading-relaxed text-fg-muted">
       {!worker.loaded ? (
-        <p>Checking the worker…</p>
+        <p>Checking the background helper…</p>
       ) : worker.online ? (
         <>
-          <p className="font-semibold text-fg">The worker is running.</p>
-          <p className="mt-1">{worker.claude ? 'It can write emails with your Claude plan.' : 'The Claude command line was not found, so pitches are written from simple templates.'}</p>
+          <p className="font-semibold text-fg">The background helper is running.</p>
+          <p className="mt-1">{worker.claude ? 'It sends email, reads replies and the AI writer can draft messages.' : 'The AI writer was not found, so messages are written from simple templates. (Technical: the Claude command line is missing.)'}</p>
         </>
       ) : (
         <>
-          <p className="font-semibold text-fg">The worker is not running.</p>
+          <p className="font-semibold text-fg">The helper is offline.</p>
           <p className="mt-1">
-            Company details, pitches, sending email, reading replies and trade scans all need it. Run <code className="font-num rounded bg-surface-2 px-1 py-0.5 text-xs text-fg">npm run worker</code> in the project folder and keep that window open.
+            Sending email, writing messages, reading replies and finding extra details all need it. Start it: run <code className="font-num rounded bg-surface-2 px-1 py-0.5 text-xs text-fg">npm run worker</code> in the project folder and keep that window open.
           </p>
         </>
       )}
@@ -37,7 +37,7 @@ export function WorkerStatus({ worker, variant = 'pill' }: { worker: WorkerInfo;
   const t = workerTone(worker);
   return (
     <Popover
-      label="Worker status"
+      label="Background helper status"
       width="w-72"
       align={variant === 'pill' ? 'end' : 'start'}
       placement={variant === 'pill' ? 'bottom' : 'top-start'}

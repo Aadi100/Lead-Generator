@@ -7,6 +7,7 @@ import { PageContainer, PageHeader } from '@/components/shell';
 import { useShell } from '@/components/AppShell';
 import { Badge, Banner, Button, Card, Field, Input, JobNote, Modal, Select, Skeleton, Textarea } from '@/components/ui';
 import { CopyIcon, PlusIcon, SparkIcon, TrashIcon, XIcon } from '@/components/Icons';
+import ShowDetails from '@/components/ShowDetails';
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar';
 import { useJob } from '@/lib/jobs';
 import { copyText } from '@/lib/clipboard';
@@ -346,7 +347,7 @@ export default function ProposalEditor({ id }: { id: string }) {
         }
         actions={
           <>
-            <Button onClick={() => void copy()} leftIcon={<CopyIcon className="h-4 w-4" />}>
+            <Button variant="ghost" onClick={() => void copy()} leftIcon={<CopyIcon className="h-4 w-4" />}>
               Copy as text
             </Button>
             <Button variant="primary" onClick={() => void download()} loading={busy === 'pdf'}>
@@ -363,7 +364,7 @@ export default function ProposalEditor({ id }: { id: string }) {
           className="mb-4"
           action={
             <Link href="/settings?tab=proposals" className="text-sm font-medium text-primary-text hover:underline">
-              Open settings
+              Add them in Settings
             </Link>
           }
         >
@@ -373,7 +374,19 @@ export default function ProposalEditor({ id }: { id: string }) {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-start">
         <div className="min-w-0 space-y-4">
-          <Card title="Client and title">
+          <Card title="1. Pick a package" subtitle="Start from one of your packages (you can change everything after), then say who it is for.">
+            <div className="mb-3 max-w-sm">
+              <Field label="Package" htmlFor="pr-pkg" hint="Choosing one replaces the price lines in step 2.">
+                <Select id="pr-pkg" value={form.package_id} onChange={(e) => choosePackage(e.target.value)}>
+                  <option value="">No package</option>
+                  {activePackages.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.category}: {p.name} ({money(p.base_price, p.currency)})
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Field label="Proposal title" htmlFor="pr-title">
@@ -389,29 +402,7 @@ export default function ProposalEditor({ id }: { id: string }) {
             </div>
           </Card>
 
-          <Card title="Summary" subtitle="Two or three plain sentences on what you will do and why.">
-            <Textarea id="pr-summary" aria-label="Summary" rows={4} value={form.summary} onChange={(e) => set('summary', e.target.value)} />
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <Button size="sm" onClick={draftSummary} disabled={ai.running} leftIcon={<SparkIcon className="h-4 w-4" />}>
-                Draft summary with AI
-              </Button>
-              <JobNote phase={ai.phase} error={ai.error} runningText="The worker is writing it. You can keep editing." />
-            </div>
-          </Card>
-
-          <Card title="Scope and price" subtitle="A line with no price shows as Included.">
-            <div className="mb-3 max-w-sm">
-              <Field label="Start from a package" htmlFor="pr-pkg" hint="Replaces the lines below. Change anything after.">
-                <Select id="pr-pkg" value={form.package_id} onChange={(e) => choosePackage(e.target.value)}>
-                  <option value="">No package</option>
-                  {activePackages.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.category}: {p.name} ({money(p.base_price, p.currency)})
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
+          <Card title="2. Edit the prices" subtitle="Change any line or price. A line with no price shows as Included.">
             <ul className="space-y-2">
               {form.rows.map((r, i) => (
                 <li key={i} className="flex items-center gap-2">
@@ -449,12 +440,22 @@ export default function ProposalEditor({ id }: { id: string }) {
             </div>
           </Card>
 
-          <Card title="Timing and terms">
+          <Card title="3. Check the details" subtitle="Read it over. The preview on the right shows exactly what the client gets.">
+          <div className="space-y-4">
+          <Field label="Summary" htmlFor="pr-summary" hint="Two or three plain sentences on what you will do and why.">
+            <Textarea id="pr-summary" rows={4} value={form.summary} onChange={(e) => set('summary', e.target.value)} />
+          </Field>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button size="sm" onClick={draftSummary} disabled={ai.running} leftIcon={<SparkIcon className="h-4 w-4" />}>
+                Draft summary with AI
+              </Button>
+              <JobNote phase={ai.phase} error={ai.error} runningText="The AI writer is working on it. You can keep editing." />
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Timeline (days)" htmlFor="pr-days">
                 <Input id="pr-days" inputMode="numeric" value={form.timeline_days} onChange={(e) => set('timeline_days', e.target.value.replace(/[^\d]/g, ''))} placeholder="14" />
               </Field>
-              <Field label="Valid until" htmlFor="pr-valid">
+              <Field label="Offer ends" htmlFor="pr-valid">
                 <div className="flex gap-2">
                   <Input id="pr-valid" type="date" value={form.valid_until} onChange={(e) => set('valid_until', e.target.value)} />
                   <Button size="sm" onClick={() => set('valid_until', addDaysIso(settings.validity_days))} title={`${settings.validity_days} days from today`}>
@@ -462,6 +463,9 @@ export default function ProposalEditor({ id }: { id: string }) {
                   </Button>
                 </div>
               </Field>
+            </div>
+            <ShowDetails id="proposal-terms" title="Show terms and private notes" className="!mt-3">
+            <div className="grid gap-3">
               <div className="sm:col-span-2">
                 <Field label="Terms" htmlFor="pr-terms" hint={`The payment line on the PDF comes from Settings: ${settings.payment_terms || 'not set'}.`}>
                   <Textarea id="pr-terms" rows={4} value={form.terms} onChange={(e) => set('terms', e.target.value)} />
@@ -472,10 +476,21 @@ export default function ProposalEditor({ id }: { id: string }) {
                   <Textarea id="pr-notes" rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
                 </Field>
               </div>
-            </div>
+                        </div>
+            </ShowDetails>
+          </div>
           </Card>
 
-          <Card title="Status" subtitle="You change this by hand. Marking a proposal sent does not send anything.">
+          <Card title="4. Download it, then send it yourself" subtitle="Download the PDF and send it from your own email. Then mark it here so you can keep track. Marking it sent does not send anything.">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <Button variant="primary" size="lg" onClick={() => void download()} loading={busy === 'pdf'}>
+                Download PDF
+              </Button>
+              <Button size="lg" onClick={() => void copy()} leftIcon={<CopyIcon className="h-4 w-4" />}>
+                Copy as text
+              </Button>
+            </div>
+            <p className="mb-1.5 text-[13px] font-medium text-fg-muted">Where is it now?</p>
             <div className="flex flex-wrap items-center gap-2">
               <div className="w-40">
                 <Select aria-label="Status" value={form.status} onChange={(e) => void setStatus(e.target.value as ProposalStatus)}>
@@ -528,7 +543,7 @@ export default function ProposalEditor({ id }: { id: string }) {
 
         <aside className="min-w-0 lg:sticky lg:top-20" aria-label="Preview">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-fg">One page preview</h2>
+            <h2 className="text-sm font-semibold text-fg">What the client will see (one page)</h2>
             {fit && (fit.hidden > 0 || fit.termsCut ? <Badge tone="warning">Trimmed to fit one page</Badge> : fit.scale < 1 ? <Badge tone="info">Scaled to fit</Badge> : <Badge tone="success">Fits one page</Badge>)}
           </div>
           <ProposalPreview doc={doc} />

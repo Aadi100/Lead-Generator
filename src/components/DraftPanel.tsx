@@ -445,7 +445,7 @@ export default function DraftPanel({
                 <Notice tone="info">
                   <span className="font-semibold">Lead Radar does not send this message.</span>{' '}
                   {isTrade
-                    ? 'Copy it, open the post, and paste it into a direct message on Reddit or Discord yourself. Check the other person first, and use a middleman or escrow before any payment. When you have sent it, press "Mark as sent".'
+                    ? 'Copy it, open the post, and paste it into a direct message on Reddit or the site yourself. Check the other person first, and use a middleman or escrow before any payment. When you have sent it, press "Mark as sent".'
                     : 'Copy it and paste it into the direct message or bid yourself. When you have sent it, press "Mark as sent".'}
                 </Notice>
               )}

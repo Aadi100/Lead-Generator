@@ -16,6 +16,7 @@ export function TaskQuickAdd({ onAdd, defaultLink }: { onAdd: (t: NewTask) => Pr
   const [priority, setPriority] = useState<TaskPriority>('normal');
   const [link, setLink] = useState<TaskLink | null>(defaultLink ?? null);
   const [busy, setBusy] = useState(false);
+  const [more, setMore] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
   const submit = async () => {
@@ -57,7 +58,7 @@ export function TaskQuickAdd({ onAdd, defaultLink }: { onAdd: (t: NewTask) => Pr
           ref={input}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder='Add a task, like "Call Sam tomorrow"'
+          placeholder='Type a task and press Enter, like "Call Sam tomorrow"'
           aria-label="New task"
           maxLength={200}
           className="!min-h-10 flex-1 !text-[15px]"
@@ -66,6 +67,12 @@ export function TaskQuickAdd({ onAdd, defaultLink }: { onAdd: (t: NewTask) => Pr
           Add
         </Button>
       </div>
+      {!more && !title.trim() && (
+        <button type="button" onClick={() => setMore(true)} className="mt-2 cursor-pointer rounded text-[13px] font-medium text-primary-text hover:underline">
+          Set a date, priority or link
+        </button>
+      )}
+      {(more || title.trim() !== '' || shortcut !== 'none' || link !== null) && (
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2.5">
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Due date">
           {DUE_SHORTCUTS.map((s) => (
@@ -100,6 +107,7 @@ export function TaskQuickAdd({ onAdd, defaultLink }: { onAdd: (t: NewTask) => Pr
         />
         <LinkPicker value={link} onChange={setLink} />
       </div>
+      )}
     </form>
   );
 }

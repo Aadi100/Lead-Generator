@@ -9,6 +9,7 @@ import { timeAgo, truncate } from '@/lib/format';
 import { Panel, PanelEmpty } from './Panel';
 
 const OPEN = buttonClass('secondary', 'sm', 'shrink-0');
+const GO = buttonClass('primary', 'sm', 'shrink-0');
 
 function Group({ title, count, href, children }: { title: string; count: number; href: string; children: ReactNode }) {
   if (count === 0) return null;
@@ -46,9 +47,9 @@ export function TodayCard({ today, onToggleTask }: { today: TodayData; onToggleT
   const sod = new Date();
   sod.setHours(0, 0, 0, 0);
   return (
-    <Panel title="Today" subtitle={today.total ? `${today.total} thing${today.total === 1 ? '' : 's'} need you` : undefined} aside={today.total > 0 ? <CountBadge n={today.total} label={`${today.total} items today`} /> : undefined}>
+    <Panel title="Today" subtitle={today.total ? `${today.total} thing${today.total === 1 ? '' : 's'} to look at` : 'Your to-do list for today'}>
       {today.total === 0 ? (
-        <PanelEmpty icon={<CheckCircleIcon className="h-5 w-5" />} title="You are all caught up" text="No tasks, drafts, replies or follow-ups are waiting. New strong leads will show up here." action={<Link href="/leads" className={buttonClass('secondary', 'sm')}>Browse leads</Link>} />
+        <PanelEmpty icon={<CheckCircleIcon className="h-5 w-5" />} title="You are all caught up" text="No tasks, drafts, replies or follow-ups are waiting. Strong new leads will show up here." action={<Link href="/leads" className={buttonClass('primary', 'sm')}>Browse leads</Link>} />
       ) : (
         <div className="space-y-4">
           <Group title="Tasks due" count={today.tasks.length} href="/tasks">
@@ -85,18 +86,18 @@ export function TodayCard({ today, onToggleTask }: { today: TodayData; onToggleT
             })}
           </Group>
 
-          <Group title="Replies waiting" count={today.replies.length} href="/outbox?tab=replies">
+          <Group title="Replies waiting" count={today.repliesCount} href="/outbox?tab=replies">
             {today.replies.slice(0, 3).map((r) => (
-              <Row key={r.id} action={<Link href="/outbox?tab=replies" className={OPEN}>Open</Link>}>
+              <Row key={r.id} action={<Link href="/outbox?tab=replies" className={GO}>Read reply</Link>}>
                 <Title>{r.from_name || r.from_email || 'Someone'}</Title>
                 <Sub>{truncate(r.summary || r.subject || 'Wrote back', 80)}</Sub>
               </Row>
             ))}
           </Group>
 
-          <Group title="Drafts to review" count={today.drafts.length} href="/outbox">
+          <Group title="Drafts to review" count={today.draftsCount} href="/outbox">
             {today.drafts.slice(0, 3).map((d) => (
-              <Row key={d.id} action={<Link href="/outbox" className={OPEN}>Review</Link>}>
+              <Row key={d.id} action={<Link href="/outbox" className={GO}>Review</Link>}>
                 <Title>{outreachLeadTitle(d)}</Title>
                 <Sub>{d.step > 1 ? 'Follow-up draft' : 'First message'} · {timeAgo(d.created_at, now)}</Sub>
               </Row>
@@ -112,9 +113,9 @@ export function TodayCard({ today, onToggleTask }: { today: TodayData; onToggleT
             ))}
           </Group>
 
-          <Group title="Hot new leads" count={today.hot.length} href="/leads?status=New&sort=fit">
+          <Group title="Strong new leads" count={today.hot.length} href="/leads?status=New&sort=fit">
             {today.hot.map((l) => (
-              <Row key={l.id} lead={<Badge tone="success" className="font-num">{l.fit_score}</Badge>} action={<Link href={`/leads?lead=${l.id}`} className={OPEN}>Open</Link>}>
+              <Row key={l.id} lead={<Badge tone="success" title={`Fit ${l.fit_score}`}>Strong fit</Badge>} action={<Link href={`/leads?lead=${l.id}`} className={GO}>Open lead</Link>}>
                 <Title>{l.title}</Title>
                 <Sub>{l.source} · {timeAgo(l.created_at, now)}</Sub>
               </Row>

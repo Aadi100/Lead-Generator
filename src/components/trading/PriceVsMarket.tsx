@@ -21,7 +21,7 @@ const stats = (l: Lead) => ({ basis: l.market_basis, n: l.market_samples ?? 0, m
 export function PriceVerdictBadge({ lead }: { lead: Lead }) {
   if (!lead.price_verdict || lead.price_pct === null) return null;
   const abs = Math.abs(Math.round(lead.price_pct));
-  const text = lead.price_verdict === 'fair' ? 'Near market price' : `${abs}% ${lead.price_verdict} market`;
+  const text = lead.price_verdict === 'fair' ? 'Fair price' : `${abs}% ${lead.price_verdict} market`;
   return (
     <Badge tone={toneFor(lead.price_verdict, lead.trade_side)} title={verdictText({ verdict: lead.price_verdict, pct: lead.price_pct }, stats(lead))}>
       {text}

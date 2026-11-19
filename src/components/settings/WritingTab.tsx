@@ -1,5 +1,6 @@
 "use client";
 
+import Advanced from './Advanced';
 import { useCallback, useEffect, useState } from 'react';
 import { defaultSetting, loadSetting, patchSetting } from '@/lib/settings';
 import { useJob } from '@/lib/jobs';
@@ -57,7 +58,7 @@ export default function WritingTab() {
     }
     setRules(res.value);
     setText(res.value.markdown);
-    pushToast('success', 'Rules saved. New pitches follow them.');
+    pushToast('success', 'Rules saved. New messages follow them.');
   };
 
   const learnNow = async () => {
@@ -72,8 +73,8 @@ export default function WritingTab() {
   return (
     <div className="space-y-4">
       <Card
-        title="How I write your pitches"
-        subtitle={`These rules are ${SOURCE_LABEL[rules.source]}${rules.updated_at ? `, updated ${fmtDateTime(rules.updated_at)}` : ''}. Every pitch follows them.`}
+        title="How I write your messages"
+        subtitle={`These rules are ${SOURCE_LABEL[rules.source]}${rules.updated_at ? `, updated ${fmtDateTime(rules.updated_at)}` : ''}. Every message follows them.`}
         actions={
           <button type="button" onClick={() => void learnNow()} disabled={learn.running} className={btnPrimary}>
             {learn.running ? <Spinner /> : <SparkIcon className="h-4 w-4" />}
@@ -88,7 +89,7 @@ export default function WritingTab() {
             <Field
               label="Writing rules"
               htmlFor="wr-text"
-              hint="One rule per line, each starting with a dash. When you edit a pitch before sending, rate it or ask for a rewrite, I update these for you. What you type here always wins."
+              hint="One rule per line, each starting with a dash. When you edit a message before sending, rate it or ask for a rewrite, I update these for you. What you type here always wins."
             >
               <textarea id="wr-text" rows={14} className={`${inputCls} resize-y font-mono text-[13px] leading-relaxed`} value={text} onChange={(e) => setText(e.target.value)} />
             </Field>
@@ -109,7 +110,8 @@ export default function WritingTab() {
         </div>
       </Card>
 
-      <Card title="Earlier versions" subtitle="Each time the rules change, the old version is kept here.">
+      <Advanced id="writing" title="Show earlier versions" hint="Each time the rules change, the old version is kept so you can restore it.">
+      <Card title="Earlier versions">
         {rules.history.length === 0 ? (
           <p className="text-sm text-fg-subtle">No earlier versions yet.</p>
         ) : (
@@ -141,6 +143,7 @@ export default function WritingTab() {
           </ul>
         )}
       </Card>
+      </Advanced>
     </div>
   );
 }

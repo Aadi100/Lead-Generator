@@ -85,19 +85,3 @@ export function redditPostToLead(entry, ctx) {
   }, ctx);
 }
 
-export function discordMessageToLead(msg, { guildId, channelId, label }, ctx) {
-  if (!msg || msg.author?.bot || !String(msg.content || '').trim()) return null;
-  const content = String(msg.content).replace(/<@!?\d+>/g, '').trim();
-  if (content.length < 8) return null;
-  const firstLine = content.split('\n').find((l) => l.trim()) || content;
-  const user = msg.author?.username || 'unknown';
-  return buildTradeLead({
-    title: firstLine.slice(0, 140), body: content, url: `https://discord.com/channels/${guildId || '@me'}/${channelId}/${msg.id}`,
-    source: 'Discord', sourceDetail: `Discord: ${label || channelId}`,
-    author: msg.author?.global_name || user, contact: `discord: ${user} (${msg.author?.id})`, postedAt: msg.timestamp || null,
-  }, ctx);
-}
-
-export const snowflakeGt = (a, b) => {
-  try { return BigInt(a) > BigInt(b); } catch { return false; }
-};

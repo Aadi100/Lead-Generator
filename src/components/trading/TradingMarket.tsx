@@ -13,6 +13,7 @@ import { SuggestionGrid, useCatalogAdder } from './Suggestions';
 import { PairedBars, TrendLines } from './TradeCharts';
 import PriceTracker from './PriceTracker';
 import TradingNav from './TradingNav';
+import Advanced from '@/components/settings/Advanced';
 
 type Col = 'game' | 'item' | 'wanted' | 'offered' | 'ratio' | 'price';
 
@@ -66,8 +67,8 @@ export default function TradingMarket() {
     <div>
       <PageHeader
         title="Market"
-        subtitle="How many people want to buy and sell each game item, and what it usually costs."
-        actions={<JobAction type="suggest_trading" label="Refresh market" runningText="Updating the numbers" icon={<MarketIcon className="h-4 w-4" />} successText={() => 'Market numbers and ideas are updated.'} onDone={() => { void reloadSettings(); void reload(); }} />}
+        subtitle="Typical prices for each game item, and how many people want or sell it."
+        actions={<JobAction type="suggest_trading" label="Refresh market" variant="primary" runningText="Updating the numbers" icon={<MarketIcon className="h-4 w-4" />} successText={() => 'Market numbers and ideas are updated.'} onDone={() => { void reloadSettings(); void reload(); }} />}
       />
       <TradingNav />
 
@@ -86,29 +87,12 @@ export default function TradingMarket() {
         <EmptyState
           icon={<MarketIcon className="h-5 w-5" />}
           title="No market data yet"
-          text="The market view builds up over a few days as trade posts are collected from Reddit and Discord. Turn trading on in My catalog and run a search."
-          action={<JobAction type="trade_scan" label="Find trade leads now" runningText="Searching" variant="primary" successText={(r) => `Found ${Number(r?.inserted ?? 0)} new trade leads.`} onDone={() => void reload()} />}
+          text="Prices build up over a few days as trade posts are found. Run a search to get started."
+          action={<JobAction type="trade_scan" label="Find leads now" runningText="Searching" variant="primary" successText={(r) => `Found ${Number(r?.inserted ?? 0)} new trade leads.`} onDone={() => void reload()} />}
         />
       ) : (
         <>
-          <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-            <Reveal>
-              <Card title="Demand and supply" subtitle="People who want to buy versus people selling, last 30 days" >
-                <PairedBars rows={chartRows} label="Buyers and sellers by game and item" />
-              </Card>
-            </Reveal>
-            <Reveal delay={60}>
-              <Card title="Price trend" subtitle="Typical (median) price per week, last 90 days" className="h-full">
-                {trend.series.length === 0 ? (
-                  <EmptyState icon={<MarketIcon className="h-5 w-5" />} title="Not enough prices yet" text="Lines appear once posts that state a price have been found over a few weeks." className="border-0 py-8" />
-                ) : (
-                  <TrendLines trend={trend} />
-                )}
-              </Card>
-            </Reveal>
-          </div>
-
-          <Reveal className="mt-4">
+          <Reveal>
             <Card title="All games and items" subtitle="Click a column heading to sort" padding="none">
               <Table caption="Buyers, sellers, demand and typical price by game and item" className="!rounded-t-none !border-0">
                 <THead>
@@ -138,6 +122,25 @@ export default function TradingMarket() {
               </Table>
             </Card>
           </Reveal>
+          <Advanced id="market-charts" title="Show charts" hint="Buyers versus sellers, and the weekly price trend.">
+          <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+            <Reveal>
+              <Card title="Demand and supply" subtitle="People who want to buy versus people selling, last 30 days" >
+                <PairedBars rows={chartRows} label="Buyers and sellers by game and item" />
+              </Card>
+            </Reveal>
+            <Reveal delay={60}>
+              <Card title="Price trend" subtitle="Typical (median) price per week, last 90 days" className="h-full">
+                {trend.series.length === 0 ? (
+                  <EmptyState icon={<MarketIcon className="h-5 w-5" />} title="Not enough prices yet" text="Lines appear once posts that state a price have been found over a few weeks." className="border-0 py-8" />
+                ) : (
+                  <TrendLines trend={trend} />
+                )}
+              </Card>
+            </Reveal>
+          </div>
+
+          </Advanced>
         </>
       )}
 
@@ -156,7 +159,7 @@ export default function TradingMarket() {
           </Card>
         </Reveal>
         <Reveal delay={60}>
-          <Card title="How much data is behind this" className="h-full">
+          <Card title="How much data is behind this" className="h-full" >
             <dl className="space-y-2 text-[13px]">
               <div className="flex justify-between gap-3">
                 <dt className="text-fg-subtle">Posts counted</dt>
@@ -187,7 +190,7 @@ export default function TradingMarket() {
             )}
             <p className="mt-3 flex items-start gap-2 text-xs text-fg-subtle">
               <InfoIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Only public Reddit posts and the Discord channels you added are counted, so treat this as a hint, not the whole market. Prices are guesses taken from the post text.
+              Only public Reddit posts and trade leads you captured by hand are counted, so treat this as a hint, not the whole market. Prices are guesses taken from the post text.
             </p>
           </Card>
         </Reveal>

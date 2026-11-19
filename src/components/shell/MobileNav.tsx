@@ -11,7 +11,7 @@ import type { WorkerInfo } from './types';
 
 const PRIMARY = MOBILE_PRIMARY_IDS.map((id) => ALL_ITEMS.find((i) => i.id === id)!).filter(Boolean);
 
-/** Phone tab bar: Dashboard, Leads, Pipeline, Outbox, and More (opens the sheet). Hidden from 768 px up. */
+/** Phone tab bar: Dashboard, Leads, Outbox, Pipeline, and More (opens the sheet). Hidden from 768 px up. */
 export function BottomNav({ pathname, counts, onMore, moreActive }: { pathname: string; counts: BadgeCounts; onMore: () => void; moreActive: boolean }) {
   const active = activeItemFor(pathname);
   const onPrimary = active ? PRIMARY.some((p) => p.id === active.id) : false;
@@ -126,7 +126,7 @@ export function MobileSheet({
             <WorkerStatus worker={worker} variant="row" />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button variant={paused ? 'primary' : 'secondary'} onClick={onTogglePause} loading={pausing} leftIcon={paused ? <PlayIcon className="h-4 w-4" /> : <PauseIcon className="h-4 w-4" />}>
+            <Button title="Stops every email until you resume" variant={paused ? 'primary' : 'secondary'} onClick={onTogglePause} loading={pausing} leftIcon={paused ? <PlayIcon className="h-4 w-4" /> : <PauseIcon className="h-4 w-4" />}>
               {paused ? 'Resume sending' : 'Pause sending'}
             </Button>
             <Button variant="danger" onClick={onSignOut} leftIcon={<SignOutIcon className="h-4 w-4" />}>

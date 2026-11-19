@@ -8,6 +8,7 @@ import type { SendingSettings } from '@/lib/types';
 import { useShell } from '../AppShell';
 import { PauseIcon, PlusIcon, TrashIcon } from '../Icons';
 import { Card, Field, Notice, Toggle, btnDanger, btnPrimary, btnSecondary, inputCls } from '../ui';
+import Advanced from './Advanced';
 import SaveBar from './SettingsSaveBar';
 
 const OWNED: (keyof SendingSettings)[] = ['require_confirm_suspicious', 'auto_draft', 'auto_draft_per_hour', 'min_trust_for_auto_draft'];
@@ -112,7 +113,7 @@ export default function SafetyTab() {
             <h2 className="text-base font-semibold text-fg">{paused ? 'Sending is paused' : 'Pause everything'}</h2>
             <p className="text-sm text-fg-muted">
               {paused
-                ? 'No emails and no follow-ups go out until you resume. Pitches already queued wait.'
+                ? 'No emails and no follow-ups go out until you resume. Messages already queued wait.'
                 : 'One switch that stops every email and follow-up straight away. Use it if something looks wrong.'}
             </p>
           </div>
@@ -131,18 +132,19 @@ export default function SafetyTab() {
               id="sf-susp"
               checked={s.require_confirm_suspicious}
               onChange={(v) => form.patch({ require_confirm_suspicious: v })}
-              label="Make me confirm before I contact a suspicious lead"
-              description="Recommended. Suspicious leads are marked in red, and you tick a box to say you checked them."
+              label="Ask me to confirm before I contact a lead marked Be careful"
+              description="Recommended. Leads marked Be careful are shown in red, and you tick a box to say you checked them."
             />
             <Toggle
               id="sf-auto"
               checked={s.auto_draft}
               onChange={(v) => form.patch({ auto_draft: v })}
-              label="Write pitches for my best leads automatically"
+              label="Write messages for my best leads automatically"
               description="They wait in your Outbox. Nothing is sent without you."
             />
+            <Advanced id="safety" hint="How many messages the AI writer drafts per hour, and the minimum trust it needs.">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Most pitches written per hour" htmlFor="sf-hour" hint="Writing uses your Claude plan, so keep this modest.">
+              <Field label="Most messages written per hour" htmlFor="sf-hour" hint="Writing uses your AI writer plan, so keep this modest.">
                 <input
                   id="sf-hour"
                   type="number"
@@ -153,7 +155,7 @@ export default function SafetyTab() {
                   onChange={(e) => form.patch({ auto_draft_per_hour: Math.max(0, Number(e.target.value) || 0) })}
                 />
               </Field>
-              <Field label="Only write for leads with trust of at least" htmlFor="sf-trust" hint="From 0 to 100.">
+              <Field label="Only write for leads that look real (0 to 100)" htmlFor="sf-trust" hint="Higher means fewer, safer leads. Try 60.">
                 <input
                   id="sf-trust"
                   type="number"
@@ -166,9 +168,10 @@ export default function SafetyTab() {
                 />
               </Field>
             </div>
+            </Advanced>
             <ul className="list-disc space-y-1 pl-5 text-sm text-fg-muted">
               <li>I never contact the same address twice for different leads.</li>
-              <li>I never email anyone on the never-contact list below, or addresses that bounced.</li>
+              <li>I never email anyone on the do-not-contact list below, or addresses that bounced.</li>
               <li>I hold back emails that link to websites that are not yours, or that still contain placeholder text.</li>
             </ul>
           </div>
@@ -176,7 +179,7 @@ export default function SafetyTab() {
         <SaveBar dirty={form.dirty} saving={form.saving} onSave={() => void save()} onReset={form.reset} error={form.error} />
       </Card>
 
-      <Card title="Never contact these addresses" subtitle="People who said no, and addresses that bounced, are added here automatically.">
+      <Card title="Do-not-contact list" subtitle="I never email these addresses. People who said no, and addresses that bounced, are added here automatically.">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <div className="min-w-0 flex-1">
             <Field label="Email address" htmlFor="sp-email">

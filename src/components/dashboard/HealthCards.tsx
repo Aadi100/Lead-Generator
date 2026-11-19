@@ -55,7 +55,7 @@ function hoursText(h: number | null): string {
 }
 
 const SRC_LEVEL = { fresh: 'ok', slow: 'warn', stale: 'bad', manual: 'off' } as const;
-const SRC_WORD = { fresh: 'Healthy', slow: 'Slowing', stale: 'Quiet', manual: 'Manual' } as const;
+const SRC_WORD = { fresh: 'Working', slow: 'Slow', stale: 'Quiet', manual: 'Manual' } as const;
 
 function SourceRow({ s }: { s: SourceHealth }) {
   const lvl = SRC_LEVEL[s.state];
@@ -65,7 +65,7 @@ function SourceRow({ s }: { s: SourceHealth }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-fg">{s.name}</p>
         <p className="truncate text-xs text-fg-subtle">
-          Last lead {hoursText(s.hoursAgo)} · <span className="font-num">{s.count24h}</span> in 24 h
+          Last lead {hoursText(s.hoursAgo)} · <span className="font-num">{s.count24h}</span> today
         </p>
       </div>
       <span className={cx('shrink-0 text-[13px] font-medium', STATE_TEXT[lvl])}>{SRC_WORD[s.state]}</span>
@@ -82,14 +82,14 @@ export function SourceHealthCard({ health, raw, workerOnline }: { health: DashMo
   const workerUp = workerSeenOnline(raw, workerOnline);
   const w = raw.settings.worker_status.last_seen;
   return (
-    <Panel title="Source health" subtitle={stale ? `${stale} source${stale === 1 ? ' has' : 's have'} gone quiet` : 'Where your leads come from'} href="/sources" linkLabel="Sources">
+    <Panel title="Where leads come from" subtitle={stale ? `${stale} place${stale === 1 ? ' has' : 's have'} gone quiet` : 'Is each lead finder working?'} href="/sources" linkLabel="Sources">
       <div className="space-y-1.5">
-        <Line level={n8nSeen ? (n8nUp ? 'ok' : 'bad') : 'off'} name="n8n scrapers" value={n8nSeen ? (n8nUp ? 'Online' : 'Offline') : 'Not seen yet'} hint={n8nSeen ? `Heartbeat ${timeAgo(n8nSeen)}${raw.n8n.last_error ? ` · last error in ${raw.n8n.last_error.workflow || 'a workflow'}` : ''}` : 'Start n8n so the feeds can run'} />
-        <Line level={workerUp ? 'ok' : 'bad'} name="Worker" value={workerUp ? 'Online' : 'Offline'} hint={w ? `Last seen ${timeAgo(w)}` : 'Run npm run worker'} />
+        <Line level={n8nSeen ? (n8nUp ? 'ok' : 'bad') : 'off'} name="Lead finders" value={n8nSeen ? (n8nUp ? 'Working' : 'Offline') : 'Not seen yet'} hint={n8nSeen ? `Last check-in ${timeAgo(n8nSeen)}${raw.n8n.last_error ? ` · last problem in ${raw.n8n.last_error.workflow || 'a finder'}` : ''}` : 'Start n8n so the lead finders can run'} />
+        <Line level={workerUp ? 'ok' : 'bad'} name="Background helper" value={workerUp ? 'Running' : 'Offline'} hint={w ? `Last seen ${timeAgo(w)}` : 'Start it: run npm run worker'} />
       </div>
       {health.length === 0 ? (
         <div className="mt-3">
-          <PanelEmpty icon={<SourcesIcon className="h-5 w-5" />} title="No sources have delivered yet" text="When a feed finds its first lead it shows up here with its freshness." action={<Link href="/sources" className={buttonClass('secondary', 'sm')}>Open sources</Link>} />
+          <PanelEmpty icon={<SourcesIcon className="h-5 w-5" />} title="No leads found yet" text="When a lead finder brings its first lead it shows up here." action={<Link href="/sources" className={buttonClass('secondary', 'sm')}>Open Sources</Link>} />
         </div>
       ) : (
         <>
@@ -100,7 +100,7 @@ export function SourceHealthCard({ health, raw, workerOnline }: { health: DashMo
           </ul>
           {health.length > 6 && (
             <button type="button" onClick={() => setAll((v) => !v)} className="mt-2 inline-flex min-h-[32px] items-center text-[13px] font-medium text-primary-text hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary [@media(pointer:coarse)]:min-h-[44px]">
-              {all ? 'Show fewer' : `Show all ${health.length} sources`}
+              {all ? 'Show fewer' : `Show all ${health.length}`}
             </button>
           )}
         </>
@@ -115,7 +115,6 @@ function keysNeeded(raw: DashRaw): string[] {
   if (i.serper.enabled && !i.serper.api_key.trim()) out.push('Google (Serper)');
   if (i.x.enabled && !i.x.bearer_token.trim()) out.push('X');
   if (i.reddit_api.enabled && !i.reddit_api.client_id.trim()) out.push('Reddit API');
-  if (raw.settings.trading.discord.enabled && !i.discord.bot_token.trim()) out.push('Discord');
   return out;
 }
 
@@ -128,88 +127,105 @@ export function SystemCard({ raw, workerOnline }: { raw: DashRaw; workerOnline: 
   return (
     <Panel title="System status" subtitle="Is everything running?" href="/settings" linkLabel="Settings">
       <div className="space-y-1.5">
-        <Line level={up ? 'ok' : 'bad'} name="Worker" value={up ? 'Running' : 'Stopped'} hint={up ? 'Checks, writes and sends for you' : 'Run npm run worker to start it'} />
-        <Line level={!up ? 'off' : claude ? 'ok' : 'warn'} name="Claude CLI" value={!up ? 'Unknown' : claude ? 'Ready' : 'Not found'} hint={claude ? 'Pitches written with your Claude plan' : 'Pitches use simple templates'} />
-        <Line level={n8nSeen ? (n8nOnline(raw) ? 'ok' : 'bad') : 'off'} name="n8n" value={n8nSeen ? (n8nOnline(raw) ? 'Online' : 'Offline') : 'Not seen'} hint={raw.n8n.errors_total ? `${raw.n8n.errors_total} workflow error${raw.n8n.errors_total === 1 ? '' : 's'} so far` : undefined} />
+        <Line level={up ? 'ok' : 'bad'} name="Background helper" value={up ? 'Running' : 'Offline'} hint={up ? 'Checks, writes and sends for you' : 'Start it: run npm run worker'} />
+        <Line level={!up ? 'off' : claude ? 'ok' : 'warn'} name="AI writer" value={!up ? 'Unknown' : claude ? 'Ready' : 'Not found'} hint={claude ? 'Messages written with your Claude plan (Claude CLI)' : 'Messages use simple templates (Claude CLI not found)'} />
+        <Line level={n8nSeen ? (n8nOnline(raw) ? 'ok' : 'bad') : 'off'} name="Lead finders (n8n)" value={n8nSeen ? (n8nOnline(raw) ? 'Working' : 'Offline') : 'Not seen'} hint={raw.n8n.errors_total ? `${raw.n8n.errors_total} problem${raw.n8n.errors_total === 1 ? '' : 's'} so far` : undefined} />
         <Line
           level={sending.provider === 'none' ? 'warn' : sending.paused ? 'warn' : 'ok'}
           name="Email sending"
           value={sending.provider === 'none' ? 'Not set up' : sending.paused ? 'Paused' : 'On'}
-          hint={sending.paused ? 'Nothing is sent until you resume' : sending.provider === 'none' ? 'Add SMTP or Resend to send pitches' : `Up to ${sending.daily_limit} a day`}
+          hint={sending.paused ? 'Nothing is sent until you resume' : sending.provider === 'none' ? 'Add an email account or email service to send messages' : `Up to ${sending.daily_limit} a day`}
           href={sending.provider === 'none' || sending.paused ? '/settings#email' : undefined}
         />
-        <Line level={needs.length ? 'warn' : 'ok'} name="Integrations" value={needs.length ? `${needs.length} need a key` : 'All set'} hint={needs.length ? needs.join(', ') : undefined} href={needs.length ? '/settings#connections' : undefined} />
+        <Line level={needs.length ? 'warn' : 'ok'} name="Connected services" value={needs.length ? `${needs.length} need a key` : 'All set'} hint={needs.length ? needs.join(', ') : undefined} href={needs.length ? '/settings#connections' : undefined} />
       </div>
     </Panel>
   );
 }
 
-const KEY = 'lr:dash-setup-hidden';
+const SETUP_OPEN_KEY = 'lr:dash-setup-open';
 
+/** The one place for the full setup checklist. Open while required steps are missing, a single quiet line once they are done. */
 export function SetupCard({ raw, workerOnline }: { raw: DashRaw; workerOnline: boolean }) {
-  const [hidden, setHidden] = useState(true);
-  useEffect(() => {
-    try {
-      setHidden(localStorage.getItem(KEY) === '1');
-    } catch {
-      setHidden(false);
-    }
-  }, []);
   const steps = setupSteps(raw.settings, workerSeenOnline(raw, workerOnline));
   const required = steps.filter((s) => !s.optional);
-  if (hidden || required.every((s) => s.done)) return null;
+  const requiredDone = required.every((s) => s.done);
   const done = steps.filter((s) => s.done).length;
-  const next = steps.filter((s) => !s.done);
+  const next = steps.find((s) => !s.done && !s.optional) ?? steps.find((s) => !s.done);
+  const [pref, setPref] = useState<boolean | null>(null);
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(SETUP_OPEN_KEY);
+      if (v === '1' || v === '0') setPref(v === '1');
+    } catch {
+      // default
+    }
+  }, []);
+  if (done === steps.length) return null;
+  const open = pref ?? !requiredDone;
+  const toggle = () => {
+    setPref(!open);
+    try {
+      localStorage.setItem(SETUP_OPEN_KEY, open ? '0' : '1');
+    } catch {
+      // not remembered
+    }
+  };
   return (
-    <Panel
-      title="Finish setting up"
-      subtitle={`${done} of ${steps.length} done`}
-      aside={
-        <button
-          type="button"
-          onClick={() => {
-            setHidden(true);
-            try {
-              localStorage.setItem(KEY, '1');
-            } catch {
-              // returns next visit
-            }
-          }}
-          className="min-h-[28px] rounded-ctl px-1.5 text-[13px] font-medium text-fg-subtle hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary [@media(pointer:coarse)]:min-h-[44px]"
-        >
-          Hide
+    <section aria-label="Finish setting up" className={cx('glass rounded-card', !requiredDone && 'border-l-2 !border-l-primary')}>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-5">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[15px] font-semibold text-fg">Finish setting up</h2>
+          <p className="truncate text-[13px] text-fg-muted">
+            {done} of {steps.length} done{next ? ` · Next: ${next.title}` : ''}
+          </p>
+        </div>
+        <div className="hidden w-32 sm:block">
+          <ProgressBar value={done} max={steps.length} label={`Setup progress, ${done} of ${steps.length} steps`} tone="primary" />
+        </div>
+        {next?.href && !open && (
+          <Link href={next.href} className={buttonClass('secondary', 'sm')}>
+            Do next step
+          </Link>
+        )}
+        <button type="button" onClick={toggle} aria-expanded={open} className="min-h-[32px] rounded-ctl px-2 text-[13px] font-medium text-primary-text hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary [@media(pointer:coarse)]:min-h-[44px]">
+          {open ? 'Hide steps' : 'Show steps'}
         </button>
-      }
-    >
-      <ProgressBar value={done} max={steps.length} label={`Setup progress, ${done} of ${steps.length} steps`} tone="primary" />
-      <ul className="mt-3 space-y-1.5">
-        {steps.map((s) => {
-          const body = (
-            <>
-              <span className={cx('flex h-5 w-5 shrink-0 items-center justify-center rounded-full', s.done ? 'bg-success-solid text-white' : 'bg-surface-2 text-fg-subtle ring-1 ring-inset ring-border-strong')} aria-hidden="true">
-                {s.done && <CheckIcon className="h-3.5 w-3.5" />}
-              </span>
-              <span className={cx('min-w-0 flex-1 truncate text-sm', s.done ? 'text-fg-subtle line-through' : 'font-medium text-fg')}>{s.title}</span>
-              {s.optional && !s.done && <Badge tone="neutral">Optional</Badge>}
-              <span className="sr-only">{s.done ? 'done' : 'not done yet'}</span>
-            </>
-          );
-          const cls = 'flex min-h-[32px] items-center gap-2.5 rounded-ctl px-1';
-          return (
-            <li key={s.id}>
-              {s.href && !s.done ? (
-                <Link href={s.href} className={cx(cls, 'hover:bg-surface-2')}>
-                  {body}
-                </Link>
-              ) : (
-                <div className={cls}>{body}</div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {next[0] && <p className="mt-2 text-xs text-fg-subtle">Next: {next[0].text}</p>}
-    </Panel>
+      </div>
+      {open && (
+        <div className="border-t border-border px-4 pb-4 pt-3 sm:px-5">
+          <ul className="grid gap-1.5 md:grid-cols-2 [&>li]:min-w-0">
+            {steps.map((s) => {
+              const body = (
+                <>
+                  <span className={cx('flex h-5 w-5 shrink-0 items-center justify-center rounded-full', s.done ? 'bg-success-solid text-white' : 'bg-surface-2 text-fg-subtle ring-1 ring-inset ring-border-strong')} aria-hidden="true">
+                    {s.done && <CheckIcon className="h-3.5 w-3.5" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cx('block truncate text-sm', s.done ? 'text-fg-subtle line-through' : 'font-medium text-fg')}>{s.title}</span>
+                    {!s.done && <span className="block truncate text-xs text-fg-subtle">{s.text}</span>}
+                  </span>
+                  {s.optional && !s.done && <Badge tone="neutral" className="shrink-0">Optional</Badge>}
+                  <span className="sr-only">{s.done ? 'done' : 'not done yet'}</span>
+                </>
+              );
+              const cls = 'flex min-h-[40px] min-w-0 items-center gap-2.5 rounded-ctl px-2 py-1';
+              return (
+                <li key={s.id}>
+                  {s.href && !s.done ? (
+                    <Link href={s.href} className={cx(cls, 'hover:bg-surface-2')}>
+                      {body}
+                    </Link>
+                  ) : (
+                    <div className={cls}>{body}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </section>
   );
 }
 

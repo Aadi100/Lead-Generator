@@ -1,5 +1,6 @@
 "use client";
 
+import Advanced from '@/components/settings/Advanced';
 import { useEffect, useState } from 'react';
 import { useShell } from '@/components/AppShell';
 import { Button, Drawer, Field, Input, Select, Textarea } from '@/components/ui';
@@ -107,9 +108,6 @@ export default function PricePointDrawer({ open, point, prefill, games, rates, o
             </Select>
           </Field>
         </div>
-        <Field label="Detail (optional)" htmlFor="pp-key" hint="A rank, level, server or amount, for example: diamond, 10k, EU. Prices with the same detail are compared with each other.">
-          <Input id="pp-key" value={d.item_key} onChange={(e) => set({ item_key: e.target.value })} placeholder="diamond" />
-        </Field>
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_8rem]">
           <Field label="Price" htmlFor="pp-price" error={touched && bad.price ? 'Enter a price above 0.' : null} hint={usd !== null && d.currency !== 'USD' ? `About $${usd} (approximate rate)` : undefined}>
             <Input id="pp-price" type="number" min={0} step="any" inputMode="decimal" value={d.price} onChange={(e) => set({ price: e.target.value })} invalid={touched && bad.price} />
@@ -124,9 +122,13 @@ export default function PricePointDrawer({ open, point, prefill, games, rates, o
             </Select>
           </Field>
         </div>
+        <Advanced id="price-point-form" title="Show advanced" hint="Where it was, the date, a detail like a rank, and a note.">
+        <Field label="Detail (optional)" htmlFor="pp-key" hint="A rank, level, server or amount, for example: diamond, 10k, EU. Prices with the same detail are compared with each other.">
+          <Input id="pp-key" value={d.item_key} onChange={(e) => set({ item_key: e.target.value })} placeholder="diamond" />
+        </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Where" htmlFor="pp-src" hint="Platform, optional">
-            <Input id="pp-src" list="pp-sources-list" value={d.source} onChange={(e) => set({ source: e.target.value })} placeholder="Discord" />
+            <Input id="pp-src" list="pp-sources-list" value={d.source} onChange={(e) => set({ source: e.target.value })} placeholder="Reddit" />
           </Field>
           <Field label="Date" htmlFor="pp-date" error={touched && bad.date ? 'Pick a date.' : null}>
             <Input id="pp-date" type="date" value={d.date} max={today()} onChange={(e) => set({ date: e.target.value })} invalid={touched && bad.date} />
@@ -135,6 +137,7 @@ export default function PricePointDrawer({ open, point, prefill, games, rates, o
         <Field label="Note (optional)" htmlFor="pp-note">
           <Textarea id="pp-note" rows={2} value={d.note} onChange={(e) => set({ note: e.target.value })} />
         </Field>
+        </Advanced>
       </div>
     </Drawer>
   );

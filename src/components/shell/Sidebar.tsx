@@ -8,6 +8,8 @@ import type { BadgeCounts } from './counts';
 import { WorkerStatus } from './WorkerStatus';
 import type { WorkerInfo } from './types';
 
+const PAUSE_HINT = 'Stops every email until you resume';
+
 function NavLink({ item, active, accent, rail, count }: { item: NavItem; active: boolean; accent?: boolean; rail: boolean; count: number | null }) {
   const Icon = item.icon;
   const center = rail ? 'justify-center' : 'justify-center lg:justify-start';
@@ -57,7 +59,7 @@ function Group({
   const active = activeItemFor(pathname);
   const GroupIcon = group.icon;
   return (
-    <div className="px-2">
+    <div className={cx('px-2', group.quiet && 'mt-auto border-t border-border pt-2')}>
       {group.collapsible && (
         <>
           <button
@@ -74,7 +76,7 @@ function Group({
           <div aria-hidden="true" className={cx('mx-2 my-2.5 h-px bg-border', rail ? 'block' : 'lg:hidden')} />
         </>
       )}
-      <ul id={`nav-group-${group.id}`} className={cx('space-y-0.5', collapsed && (rail ? '' : 'lg:hidden'))}>
+      <ul id={`nav-group-${group.id}`} className={cx('space-y-0.5', group.quiet && 'opacity-80', collapsed && (rail ? '' : 'lg:hidden'))}>
         {group.items.map((item) => (
           <li key={item.id}>
             <NavLink item={item} active={active?.id === item.id} accent={group.accent} rail={rail} count={item.badge ? counts[item.badge] : null} />
@@ -126,11 +128,11 @@ export default function Sidebar({
         </Link>
         <div className={cx('nav-label-in min-w-0', label)}>
           <p className="truncate text-[15px] font-semibold leading-tight text-fg">Lead Radar</p>
-          <p className="truncate text-xs text-fg-subtle">Leads, deals and trading</p>
+          <p className="truncate text-xs text-fg-subtle">Find and win clients</p>
         </div>
       </div>
 
-      <nav ref={slider.ref} aria-label="Main" className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-3 pt-1">
+      <nav ref={slider.ref} aria-label="Main" className="relative flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-3 pt-1">
         <span
           aria-hidden="true"
           className={cx('slider-thumb nav-pill', pillAccent ? 'bg-accent-soft text-accent-text' : 'bg-primary-soft text-primary-text')}
@@ -138,7 +140,7 @@ export default function Sidebar({
           style={slider.style}
         />
         {NAV_GROUPS.map((g) => (
-          <Group key={g.id} group={g} pathname={pathname} rail={rail} collapsed={!!collapsedGroups[g.id]} onToggle={() => onToggleGroup(g.id)} counts={counts} />
+          <Group key={g.id} group={g} pathname={pathname} rail={rail} collapsed={collapsedGroups[g.id] ?? !!g.defaultCollapsed} onToggle={() => onToggleGroup(g.id)} counts={counts} />
         ))}
       </nav>
 
@@ -155,12 +157,13 @@ export default function Sidebar({
         )}
 
         <div className={cx(rail ? 'flex justify-center' : 'flex justify-center lg:block')}>
-          <span className={cx(rail ? 'inline-flex' : 'inline-flex lg:hidden')}>
+          <span title={PAUSE_HINT} className={cx(rail ? 'inline-flex' : 'inline-flex lg:hidden')}>
             <IconButton label={paused ? 'Resume sending' : 'Pause sending'} onClick={onTogglePause} disabled={pausing} variant={paused ? 'primary' : 'ghost'}>
               {paused ? <PlayIcon className="h-4 w-4" /> : <PauseIcon className="h-4 w-4" />}
             </IconButton>
           </span>
           {!rail && (
+            <span title={PAUSE_HINT} className="hidden w-full lg:block">
             <Button
               variant={paused ? 'primary' : 'secondary'}
               size="md"
@@ -168,10 +171,11 @@ export default function Sidebar({
               onClick={onTogglePause}
               loading={pausing}
               leftIcon={paused ? <PlayIcon className="h-4 w-4" /> : <PauseIcon className="h-4 w-4" />}
-              className="hidden lg:inline-flex"
+              className="inline-flex"
             >
               {paused ? 'Resume sending' : 'Pause sending'}
             </Button>
+            </span>
           )}
         </div>
 

@@ -31,8 +31,19 @@ export function useSourcesData(): SourcesData {
   const [now, setNow] = useState(() => Date.now());
 
   const refresh = useCallback(async () => {
+    // Supabase returns at most 1000 rows per request, so load the newest leads in pages (cap 5000).
+    const loadLeads = async () => {
+      const all: LeadRow[] = [];
+      for (let from = 0; from < 5000; from += 1000) {
+        const r = await supabase.from('leads').select('source,source_detail,lead_kind,trust_score,created_at').order('created_at', { ascending: false }).range(from, from + 999);
+        if (r.error) return { data: null, error: r.error };
+        all.push(...((r.data ?? []) as LeadRow[]));
+        if ((r.data ?? []).length < 1000) break;
+      }
+      return { data: all, error: null };
+    };
     const [lr, sr] = await Promise.all([
-      supabase.from('leads').select('source,source_detail,lead_kind,trust_score,created_at').order('created_at', { ascending: false }).limit(2000),
+      loadLeads(),
       supabase.from('app_settings').select('key,value').in('key', KEYS),
     ]);
     const err = lr.error?.message ?? sr.error?.message ?? null;
@@ -84,7 +95,7 @@ export function useSourcesData(): SourcesData {
       worker,
       sendingPaused: sending.paused,
       leadCount: leads.length,
-      capped: leads.length >= 2000,
+      capped: leads.length >= 5000,
       keysMissing: rows.filter((r) => r.status === 'needs_key').map((r) => r.def.name),
       refresh,
     };

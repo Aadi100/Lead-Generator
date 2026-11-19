@@ -3,7 +3,9 @@ import { supabase } from './supabaseClient';
 import { normalizeLead } from './format';
 import type { Lead, Status } from './types';
 
-export const PIPELINE_LIMIT = 600;
+export const PIPELINE_LIMIT = 5000; // most leads loaded in total (1000 per request)
+const PAGE = 1000;
+export const COLUMN_PAGE = 40; // cards drawn per column before "Show more"
 export const COLUMN_STATUSES: Status[] = ['New', 'Pitched', 'Replied', 'Won', 'Lost'];
 export type ColumnStatus = Status;
 
@@ -28,13 +30,23 @@ export type PipelineData = {
 };
 
 export async function loadPipeline(): Promise<PipelineData> {
-  const [leadsRes, countRes, outRes] = await Promise.all([
-    supabase.from('leads').select(LEAD_COLUMNS).order('created_at', { ascending: false }).limit(PIPELINE_LIMIT),
+  const pageOf = (from: number) =>
+    supabase.from('leads').select(LEAD_COLUMNS).order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, from + PAGE - 1);
+  const [firstRes, countRes, outRes] = await Promise.all([
+    pageOf(0),
     supabase.from('leads').select('id', { count: 'exact', head: true }),
     supabase.from('outreach').select('lead_id,status,created_at').order('created_at', { ascending: false }).limit(2000),
   ]);
-  if (leadsRes.error) throw new Error(leadsRes.error.message);
-  const leads = ((leadsRes.data ?? []) as unknown as Record<string, unknown>[]).map(normalizeLead);
+  if (firstRes.error) throw new Error(firstRes.error.message);
+  let rows = (firstRes.data ?? []) as unknown as Record<string, unknown>[];
+  let all = rows;
+  for (let from = PAGE; rows.length === PAGE && from < PIPELINE_LIMIT; from += PAGE) {
+    const res = await pageOf(from);
+    if (res.error) throw new Error(res.error.message);
+    rows = (res.data ?? []) as unknown as Record<string, unknown>[];
+    all = all.concat(rows);
+  }
+  const leads = all.map(normalizeLead);
   const outreach: Record<string, string> = {};
   if (!outRes.error) {
     for (const row of (outRes.data ?? []) as { lead_id: string | null; status: string | null }[]) {

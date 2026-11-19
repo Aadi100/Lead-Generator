@@ -12,7 +12,7 @@ import Sidebar from './shell/Sidebar';
 import Topbar from './shell/Topbar';
 import { BottomNav, MobileSheet } from './shell/MobileNav';
 import CommandPalette from './shell/CommandPalette';
-import { activeItemFor, groupOf } from './shell/nav';
+import { activeItemFor, groupOf, NAV_GROUPS } from './shell/nav';
 import { EMPTY_COUNTS, fetchBadgeCounts, REFRESH_COUNTS_EVENT, type BadgeCounts } from './shell/counts';
 import type { LiveState, WorkerInfo } from './shell/types';
 
@@ -89,7 +89,8 @@ export default function AppShell({ children }: { active?: string; children: Reac
 
   const toggleGroup = useCallback((id: string) => {
     setCollapsedGroups((cur) => {
-      const next = { ...cur, [id]: !cur[id] };
+      const def = !!NAV_GROUPS.find((g) => g.id === id)?.defaultCollapsed;
+      const next = { ...cur, [id]: !(cur[id] ?? def) };
       try {
         localStorage.setItem(GROUPS_KEY, JSON.stringify(next));
       } catch {
@@ -103,7 +104,7 @@ export default function AppShell({ children }: { active?: string; children: Reac
   useEffect(() => {
     const item = activeItemFor(pathname);
     const group = item ? groupOf(item.id) : undefined;
-    if (group && collapsedGroups[group.id]) toggleGroup(group.id);
+    if (group && (collapsedGroups[group.id] ?? !!group.defaultCollapsed)) setCollapsedGroups((cur) => ({ ...cur, [group.id]: false }));
     // collapsedGroups is intentionally read once per route change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
@@ -224,7 +225,7 @@ export default function AppShell({ children }: { active?: string; children: Reac
         return;
       }
       setSending(res.value);
-      pushToast('success', paused ? 'Sending is paused. Nothing will go out.' : 'Sending is back on.');
+      pushToast('success', paused ? 'Sending is paused. No email will go out.' : 'Sending is back on.');
     },
     [pushToast],
   );

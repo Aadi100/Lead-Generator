@@ -50,10 +50,10 @@ export function sortReplies(rows: ReplyWithLead[]): ReplyWithLead[] {
   return [...rows].sort((a, b) => Number(a.handled) - Number(b.handled) || t(b) - t(a));
 }
 
-export const WARNING_STYLE: Record<Warning['level'], { box: string; label: string }> = {
-  hard: { box: 'border-danger-border bg-danger-soft text-danger', label: 'Cannot send' },
-  hold: { box: 'border-warning-border bg-warning-soft text-warning', label: 'Needs your OK' },
-  warn: { box: 'border-border bg-surface-2 text-fg-muted', label: 'Heads up' },
+export const WARNING_STYLE: Record<Warning['level'], { box: string; label: string; advice: string }> = {
+  hard: { box: 'border-danger-border bg-danger-soft text-danger', label: 'Cannot send yet', advice: 'Fix this first. Press Review & send and change the message or address.' },
+  hold: { box: 'border-warning-border bg-warning-soft text-warning', label: 'Needs a look', advice: 'Check it, then confirm when you press Send. Nothing goes out until you do.' },
+  warn: { box: 'border-border bg-surface-2 text-fg-muted', label: 'Good to know', advice: 'You can still send. Read the message once more first.' },
 };
 
 export type TaskDue = 'none' | 'today' | 'tomorrow' | 'in3' | 'nextweek';

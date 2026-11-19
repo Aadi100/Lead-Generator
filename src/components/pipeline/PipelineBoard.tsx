@@ -12,9 +12,9 @@ import { budgetLabel, displayDate, fmtDateTime, isHttpUrl, splitContact, timeAgo
 import type { Lead, Status } from '@/lib/types';
 import {
   COLUMN_HINT,
+  COLUMN_PAGE,
   COLUMN_STATUSES,
   OUTREACH_LABEL,
-  PIPELINE_LIMIT,
   createDealFromLead,
   leadHref,
   loadPipeline,
@@ -24,6 +24,7 @@ import {
   type PipelineData,
   type PipelineScope,
 } from '@/lib/pipeline-data';
+import { matchTag } from '@/components/leads/LeadBits';
 import { PipelineCard } from './PipelineCard';
 import { MoveMenu } from './MoveMenu';
 
@@ -35,6 +36,9 @@ const COL_ACCENT: Record<Status, string> = {
   Lost: 'bg-danger',
   Ignored: 'bg-fg-subtle',
 };
+
+// Kept between visits so switching back to Pipeline shows the board at once while it refreshes quietly.
+let pipelineCache: PipelineData | null = null;
 
 export function PipelineBoard() {
   const router = useRouter();
@@ -61,21 +65,24 @@ export function PipelineBoard() {
     [params, pathname, router],
   );
 
-  const [data, setData] = useState<PipelineData | null>(null);
+  const [data, setData] = useState<PipelineData | null>(pipelineCache);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(pipelineCache === null);
   const [search, setSearch] = useState(query);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<Status | null>(null);
+  const [moreFilters, setMoreFilters] = useState(false);
+  const [shownCount, setShownCount] = useState<Partial<Record<Status, number>>>({});
   const [collapsed, setCollapsed] = useState<Partial<Record<Status, boolean>>>({});
   const [wonFor, setWonFor] = useState<Lead | null>(null);
   const [lostFor, setLostFor] = useState<Lead | null>(null);
   const pending = useRef(0);
 
   const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
+    if (!silent && pipelineCache === null) setLoading(true);
     try {
       const d = await loadPipeline();
+      pipelineCache = d;
       setData(d);
       setError(null);
     } catch (e) {
@@ -194,7 +201,7 @@ export function PipelineBoard() {
     <PageContainer width="full">
       <PageHeader
         title="Pipeline"
-        subtitle="Drag a lead to the next stage, or use Move to. Won and Lost ask one quick question."
+        subtitle="Every lead by stage. Drag a card to the next stage, or use its Move button. Won and Lost ask one quick question."
         actions={
           <Button onClick={() => void load()} leftIcon={<RefreshIcon className={cx('h-4 w-4', loading && 'animate-spin')} />} disabled={loading}>
             Refresh
@@ -220,26 +227,9 @@ export function PipelineBoard() {
           <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
           <Input id="pipe-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search title, company, source" className="!pl-8" />
         </div>
-        <label className="flex items-center gap-2 text-[13px] text-fg-muted">
-          <FilterIcon className="h-4 w-4 text-fg-subtle" aria-hidden="true" />
-          <span className="whitespace-nowrap">
-            Min fit <span className="font-num font-medium text-fg">{minFit}</span>
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={90}
-            step={5}
-            value={minFit}
-            onChange={(e) => setParam({ fit: Number(e.target.value) ? e.target.value : null })}
-            aria-label="Minimum fit score"
-            className="ctl h-5 w-28 cursor-pointer accent-[rgb(var(--primary))]"
-          />
-        </label>
-        <div className="flex items-center gap-2">
-          <Switch checked={showIgnored} onChange={(v) => setParam({ ignored: v ? '1' : null })} label="Show ignored leads" />
-          <span className="text-[13px] text-fg-muted">Show ignored</span>
-        </div>
+        <Button variant="ghost" onClick={() => setMoreFilters((v) => !v)} aria-expanded={moreFilters} leftIcon={<FilterIcon className="h-4 w-4" />}>
+          {moreFilters ? 'Fewer filters' : 'More filters'}
+        </Button>
         {filtersOn && (
           <Button
             variant="ghost"
@@ -254,9 +244,34 @@ export function PipelineBoard() {
         )}
       </div>
 
+      {moreFilters && (
+        <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-card border border-border bg-surface-2/50 px-3.5 py-3">
+          <label className="flex items-center gap-2 text-[13px] text-fg-muted">
+            <FilterIcon className="h-4 w-4 text-fg-subtle" aria-hidden="true" />
+            <span className="whitespace-nowrap">
+              Only leads that fit at least <span className="font-num font-medium text-fg">{minFit}</span>
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={90}
+              step={5}
+              value={minFit}
+              onChange={(e) => setParam({ fit: Number(e.target.value) ? e.target.value : null })}
+              aria-label="Minimum fit score"
+              className="ctl h-5 w-28 cursor-pointer accent-[rgb(var(--primary))]"
+            />
+          </label>
+          <div className="flex items-center gap-2">
+            <Switch checked={showIgnored} onChange={(v) => setParam({ ignored: v ? '1' : null })} label="Show ignored leads" />
+            <span className="text-[13px] text-fg-muted">Show ignored</span>
+          </div>
+          </div>
+      )}
+
       {truncated && data && (
         <Banner tone="info" className="mb-3">
-          Showing your {PIPELINE_LIMIT} most recent leads out of {data.total.toLocaleString('en-US')}. Older leads are in Leads.
+          Showing your {data.leads.length.toLocaleString('en-US')} most recent leads out of {data.total.toLocaleString('en-US')}. Older leads are in Leads.
         </Banner>
       )}
       {error && (
@@ -297,6 +312,8 @@ export function PipelineBoard() {
             {columns.map((s) => {
               const items = byStatus[s] ?? [];
               const total = sumBudget(items);
+              const limit = shownCount[s] ?? COLUMN_PAGE;
+              const drawn = items.slice(0, limit);
               const isCollapsed = !!collapsed[s];
               const isOver = overCol === s && dragId !== null;
               return (
@@ -324,18 +341,12 @@ export function PipelineBoard() {
                   <header className="flex items-center gap-2 px-3 py-2.5">
                     <span className={cx('h-2 w-2 shrink-0 rounded-full', COL_ACCENT[s])} aria-hidden="true" />
                     <div className="min-w-0 flex-1">
-                      <h2 className="flex items-baseline gap-1.5 text-sm font-semibold text-fg">
+                      <h2 className="flex items-baseline gap-1.5 text-[15px] font-semibold text-fg">
                         {s}
-                        <span className="font-num text-xs font-normal text-fg-muted">{items.length}</span>
+                        <span className="font-num text-[13px] font-normal text-fg-muted">{items.length.toLocaleString('en-US')}</span>
                       </h2>
-                      <p className="truncate text-xs text-fg-subtle">
-                        {total > 0 ? (
-                          <>
-                            <span className="font-num text-fg-muted">{money(total)}</span> total budget
-                          </>
-                        ) : (
-                          COLUMN_HINT[s]
-                        )}
+                      <p className="truncate text-[13px] text-fg-subtle" title={total > 0 ? `${money(total)} total budget` : undefined}>
+                        {COLUMN_HINT[s]}
                       </p>
                     </div>
                     <button
@@ -355,7 +366,7 @@ export function PipelineBoard() {
                           {isOver ? `Drop to move to ${s}` : filtersOn ? 'Nothing here matches your filters' : 'Nothing here yet. Drag a lead in.'}
                         </li>
                       ) : (
-                        items.map((l) => (
+                        drawn.map((l) => (
                           <PipelineCard
                             key={l.id}
                             lead={l}
@@ -371,6 +382,13 @@ export function PipelineBoard() {
                             }}
                           />
                         ))
+                      )}
+                      {items.length > limit && (
+                        <li className="pt-1 text-center">
+                          <Button size="sm" onClick={() => setShownCount((c) => ({ ...c, [s]: limit + COLUMN_PAGE }))}>
+                            Show {Math.min(COLUMN_PAGE, items.length - limit)} more ({items.length - limit} left)
+                          </Button>
+                        </li>
                       )}
                     </ul>
                   )}
@@ -515,14 +533,10 @@ function PreviewDrawer({
         <div className="space-y-4 text-sm">
           <div className="flex flex-wrap items-center gap-1.5">
             <StatusBadge status={l.status} />
-            <TrustBadge level={l.trust_level} score={l.trust_score} />
-            {l.fit_score != null && (
-              <Badge tone={l.fit_score >= 70 ? 'success' : l.fit_score >= 45 ? 'warning' : 'neutral'}>
-                Fit <span className="font-num">{l.fit_score}</span>
-              </Badge>
-            )}
-            {l.is_suspicious && <Badge tone="danger">Looks suspicious</Badge>}
-            {l.lead_kind !== 'trade' && l.category && <CategoryChip category={l.category} />}
+            {(() => {
+              const t = l.lead_kind === 'trade' ? null : matchTag(l);
+              return t ? <Badge tone={t.tone}>{t.label}</Badge> : null;
+            })()}
             {l.lead_kind === 'trade' && l.trade_side && <Badge tone="accent">{l.trade_side === 'buyer' ? 'Buyer' : 'Seller'}</Badge>}
           </div>
 
@@ -530,6 +544,9 @@ function PreviewDrawer({
             <Item label="Source" value={l.source_detail ? `${l.source} / ${l.source_detail}` : l.source} />
             <Item label="Found" value={`${timeAgo(displayDate(l))}`} />
             <Item label="Budget" value={budget ?? 'Not stated'} mono />
+            {l.lead_kind !== 'trade' && l.category && <Item label="Type" value={l.category} />}
+            {l.fit_score != null && <Item label="Fit with what you offer" value={`${l.fit_score} out of 100`} />}
+            {l.trust_level && <Item label="Can I trust it?" value={`${l.trust_level === 'High' ? 'Looks real' : l.trust_level === 'Medium' ? 'Check first' : 'Be careful'}${l.trust_score != null ? ` (${l.trust_score})` : ''}`} />}
             <Item label="Message status" value={(outreach && OUTREACH_LABEL[outreach]) || 'Nothing sent yet'} />
             {l.pitched_at && <Item label="Pitched" value={fmtDateTime(l.pitched_at)} />}
             {l.replied_at && <Item label="Replied" value={fmtDateTime(l.replied_at)} />}
@@ -537,7 +554,7 @@ function PreviewDrawer({
 
           {l.flags.length > 0 && (
             <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-subtle">Watch out for</p>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-subtle">Be careful about</p>
               <div className="flex flex-wrap gap-1.5">
                 {l.flags.map((f) => (
                   <Badge key={f} tone="warning">

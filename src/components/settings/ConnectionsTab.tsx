@@ -8,11 +8,12 @@ import type { IntegrationName, IntegrationStatus, IntegrationsSettings } from '@
 import { useShell } from '../AppShell';
 import { Card, Field, Notice, Spinner, Toggle, btnSecondary, inputCls, pill } from '../ui';
 import SaveBar from './SettingsSaveBar';
+import Advanced from './Advanced';
 import SecretInput from './SecretInput';
 import { ResultChip } from './StatusChip';
 import Link from 'next/link';
 
-const OWNED: (keyof IntegrationsSettings)[] = ['serper', 'x', 'reddit_api', 'discord', 'upwork_inbox', 'producthunt'];
+const OWNED: (keyof IntegrationsSettings)[] = ['serper', 'x', 'reddit_api', 'upwork_inbox', 'producthunt'];
 
 type Chip = { label: string; tone: string; title?: string };
 
@@ -20,11 +21,12 @@ function chipFor(enabled: boolean | null, hasKey: boolean, status: IntegrationSt
   if (enabled === false) return { label: 'Off', tone: 'bg-surface-2 text-fg-muted ring-border' };
   if (!hasKey) return { label: keyWord, tone: 'bg-warning-soft text-warning ring-warning-border' };
   if (status) {
+    const msg = (status.message || 'the test failed').replace(/\s+/g, ' ');
     return status.ok
-      ? { label: 'Ready', tone: 'bg-success-soft text-success ring-success-border', title: status.checked_at ? `Checked ${fmtDateTime(status.checked_at)}` : undefined }
-      : { label: 'Problem', tone: 'bg-danger-soft text-danger ring-danger-border', title: status.message };
+      ? { label: 'Working', tone: 'bg-success-soft text-success ring-success-border', title: status.checked_at ? `Checked ${fmtDateTime(status.checked_at)}` : undefined }
+      : { label: `Problem: ${msg.length > 48 ? `${msg.slice(0, 46)}…` : msg}`, tone: 'bg-danger-soft text-danger ring-danger-border', title: status.message };
   }
-  return { label: 'Not tested yet', tone: 'bg-surface-2 text-fg-muted ring-border' };
+  return { label: 'Ready to test', tone: 'bg-surface-2 text-fg-muted ring-border' };
 }
 
 function Section({
@@ -36,7 +38,7 @@ function Section({
   enabled,
   onToggle,
   hasKey,
-  keyWord = 'Needs setup',
+  keyWord = 'Needs a key',
   status,
   beforeTest,
   onTested,
@@ -70,13 +72,13 @@ function Section({
   const message = typeof run.result?.message === 'string' ? run.result.message : '';
 
   return (
-    <section aria-labelledby={`${id}-title`} className="border-t border-border pt-5 first:border-0 first:pt-0">
+    <section aria-labelledby={`${id}-title`} className="rounded-card border border-border bg-surface-2/40 p-4 sm:p-5">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 id={`${id}-title`} className="text-sm font-semibold text-fg">
+        <h3 id={`${id}-title`} className="text-base font-semibold text-fg">
           {title}
         </h3>
-        <span className={`${pill} ${chip.tone}`} title={chip.title}>
-          {chip.label}
+        <span className={`${pill} ${chip.tone} max-w-full`} title={chip.title}>
+          <span className="truncate">{chip.label}</span>
         </span>
       </div>
       <p className="mt-1 text-sm text-fg-muted">{what}</p>
@@ -90,8 +92,8 @@ function Section({
       {children && <div className="mt-3 grid gap-3 sm:grid-cols-2">{children}</div>}
 
       <details className="mt-3 text-sm">
-        <summary className="cursor-pointer text-xs font-semibold text-primary-text">Where do I get this?</summary>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-fg-subtle">
+        <summary className="inline-flex min-h-9 cursor-pointer items-center text-sm font-semibold text-primary-text">Where do I get this?</summary>
+        <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm text-fg-muted">
           {steps.map((s, i) => (
             <li key={i}>{s}</li>
           ))}
@@ -107,7 +109,7 @@ function Section({
         {ok && <ResultChip state="ok" message={message || 'Works.'} />}
         {bad && <ResultChip state="bad" message={message || 'The test did not pass.'} />}
         {(run.phase === 'failed' || run.phase === 'timeout') && <ResultChip state="bad" message={run.error ?? 'The test did not finish.'} />}
-        {!hasKey && <span className="text-xs text-fg-subtle">Add the details first.</span>}
+        {!hasKey && <span className="text-sm text-fg-subtle">Add the key first.</span>}
       </div>
     </section>
   );
@@ -131,12 +133,12 @@ export default function ConnectionsTab() {
       const { sending, smtp, resend, imap, alerts } = values;
       const emailReady = sending.from_email.trim() !== '' && ((sending.provider === 'smtp' && smtp.host.trim() !== '') || (sending.provider === 'resend' && resend.api_key.trim() !== ''));
       const inbox = imap.enabled && imap.host.trim() !== '' && imap.user.trim() !== '' && imap.pass.trim() !== '';
-      const alertsReady = !!(alerts.discord.webhook_url || alerts.email.to || (alerts.telegram.bot_token && alerts.telegram.chat_id) || (alerts.whatsapp.phone && alerts.whatsapp.apikey));
+      const alertsReady = !!(alerts.email.to || (alerts.whatsapp.phone && alerts.whatsapp.apikey));
       setInboxReady(inbox);
       setOthers([
-        { label: 'Email sending (SMTP or Resend)', ready: emailReady, note: 'Needed to send pitches with one click.', tab: 'email' },
-        { label: 'Inbox for replies (IMAP)', ready: inbox, note: 'Lets me spot replies. Also used for Upwork alert emails.', tab: 'imap' },
-        { label: 'Alerts (Discord webhook, email, WhatsApp, Telegram)', ready: alertsReady, note: 'Where I send you a message when a strong lead arrives.', tab: 'alerts' },
+        { label: 'Email account', ready: emailReady, note: 'Needed to send messages with one click.', tab: 'email' },
+        { label: 'Inbox for replies', ready: inbox, note: 'Lets me spot replies. Also used for Upwork alert emails.', tab: 'imap' },
+        { label: 'Alerts', ready: alertsReady, note: 'Where I message you when a strong lead arrives (email or WhatsApp).', tab: 'alerts' },
       ]);
     })();
     return () => {
@@ -163,18 +165,13 @@ export default function ConnectionsTab() {
   return (
     <div className="space-y-4">
       <Card
-        title="Connections and API keys"
-        subtitle="Some sources need a key from the service. Paste it here, switch the source on, and press Test connection. Nothing runs until you do."
+        title="Lead finders and keys"
+        subtitle="A key is a private code from a service that lets me use it for you. Paste it, switch the service on, then press Test connection."
       >
         {form.loading ? (
           <p className="text-sm text-fg-subtle">Loading…</p>
         ) : (
           <div className="space-y-5">
-            <Notice tone="warn">
-              Telegram is blocked on some networks, including yours when I tested. For that reason I do not use Telegram as a source, and Telegram alerts may fail.
-              If the Telegram test fails, use the Discord webhook or email in the Alerts tab instead.
-            </Notice>
-
             <Section
               id="cn-serper"
               name="serper"
@@ -191,7 +188,7 @@ export default function ConnectionsTab() {
               ]}
               {...common}
             >
-              <Field label="Serper API key" htmlFor="cn-serper-key">
+              <Field label="Serper key" htmlFor="cn-serper-key">
                 <SecretInput
                   id="cn-serper-key"
                   autoComplete="off"
@@ -209,6 +206,62 @@ export default function ConnectionsTab() {
             </Section>
 
             <Section
+              id="cn-ph"
+              name="producthunt"
+              title="Product Hunt"
+              what="Finds new product launches whose makers might want a better website, app or design. These are outbound prospects: they did not ask for help. Works without a key from the public launch feed. A token adds a check of each product's website."
+              enabled={c.producthunt.enabled}
+              onToggle={(v) => form.patch({ producthunt: { ...c.producthunt, enabled: v } })}
+              hasKey={c.producthunt.token.trim() !== ''}
+              keyWord="Works without a key"
+              status={st.producthunt}
+              steps={[
+                'Go to producthunt.com/v2/oauth/applications and sign in.',
+                'Add an application (any name, redirect URL https://localhost).',
+                'Press Create Token under Developer Token and copy it.',
+                'Paste it here and press Test connection. Leave it empty to keep using the public feed.',
+              ]}
+              {...common}
+            >
+              <Field label="Key (optional)" htmlFor="cn-ph-token">
+                <SecretInput
+                  id="cn-ph-token"
+                  autoComplete="off"
+                  value={c.producthunt.token}
+                  onChange={(e) => form.patch({ producthunt: { ...c.producthunt, token: e.target.value.trim().replace(/^Bearer\s+/i, '') } })}
+                />
+              </Field>
+            </Section>
+
+            <Section
+              id="cn-upwork"
+              name="upwork_inbox"
+              title="Upwork alerts from my inbox"
+              what="Reads the job alert emails Upwork sends you and turns them into leads. It only reads. It never changes or deletes your emails."
+              enabled={c.upwork_inbox.enabled}
+              onToggle={(v) => form.patch({ upwork_inbox: { ...c.upwork_inbox, enabled: v } })}
+              hasKey={inboxReady}
+              keyWord="Needs your inbox"
+              status={st.upwork_inbox}
+              steps={[
+                'On Upwork, save a search for each kind of work you want and turn on email alerts for it.',
+                'Set up the inbox that receives those emails in the Inbox for replies tab (no extra key is needed).',
+                'Switch this on and press Test connection.',
+              ]}
+              {...common}
+            >
+              {!inboxReady && (
+                <div className="sm:col-span-2">
+                  <Notice tone="info">
+                    No key is needed here, but I need to read your inbox first. Set it up in the <Link href="/settings?tab=imap" className="font-semibold underline">Inbox for replies</Link> tab.
+                  </Notice>
+                </div>
+              )}
+            </Section>
+
+            <Advanced id="connections-more" title="Show more optional connections" hint="X and the Reddit API. Optional, and X needs a paid plan.">
+              <div className="space-y-5">
+            <Section
               id="cn-x"
               name="x"
               title="X (Twitter)"
@@ -219,13 +272,13 @@ export default function ConnectionsTab() {
               status={st.x}
               steps={[
                 'Go to developer.x.com and sign in.',
-                'Create a project and an app. Search needs a paid plan, the free plan does not include it.',
-                'Open the app, find Keys and tokens, and copy the Bearer Token.',
+                'Create a project and an app. Searching needs a paid plan.',
+                'Open the app, go to Keys and tokens, and copy the Bearer Token.',
                 'Paste it here without the word Bearer.',
               ]}
               {...common}
             >
-              <Field label="Bearer token" htmlFor="cn-x-token">
+              <Field label="Key" htmlFor="cn-x-token">
                 <SecretInput
                   id="cn-x-token"
                   autoComplete="off"
@@ -268,92 +321,14 @@ export default function ConnectionsTab() {
               </Field>
             </Section>
 
-            <Section
-              id="cn-discord"
-              name="discord"
-              title="Discord bot"
-              what="Reads trading channels in Discord servers where you added your own bot. It cannot read servers it is not in, and it never posts anything."
-              enabled={null}
-              hasKey={c.discord.bot_token.trim() !== ''}
-              status={st.discord}
-              steps={[
-                'Go to discord.com/developers/applications and press New Application.',
-                'Open Bot in the left menu, press Reset Token, and copy the token. Paste it here.',
-                'On the same page, turn on Message Content Intent and save.',
-                'Open OAuth2, then URL Generator. Tick "bot", then View Channels and Read Message History. Open the link it makes and add the bot to a server you are allowed to add bots to.',
-                'Then open the Game Trading catalog, turn on Discord, and add the channel IDs.',
-              ]}
-              {...common}
-            >
-              <Field label="Bot token" htmlFor="cn-dc-token" hint="Choose which channels to read in the Game Trading catalog.">
-                <SecretInput
-                  id="cn-dc-token"
-                  autoComplete="off"
-                  value={c.discord.bot_token}
-                  onChange={(e) => form.patch({ discord: { ...c.discord, bot_token: e.target.value.trim() } })}
-                />
-              </Field>
-            </Section>
-
-            <Section
-              id="cn-ph"
-              name="producthunt"
-              title="Product Hunt"
-              what="Finds new product launches whose makers might want a better website, app or design. These are outbound prospects: they did not ask for help. Works without a key from the public launch feed. A token adds a check of each product's website."
-              enabled={c.producthunt.enabled}
-              onToggle={(v) => form.patch({ producthunt: { ...c.producthunt, enabled: v } })}
-              hasKey={c.producthunt.token.trim() !== ''}
-              keyWord="Optional token"
-              status={st.producthunt}
-              steps={[
-                'Go to producthunt.com/v2/oauth/applications and sign in.',
-                'Add an application (any name, redirect URL https://localhost).',
-                'Press Create Token under Developer Token and copy it.',
-                'Paste it here and press Test connection. Leave it empty to keep using the public feed.',
-              ]}
-              {...common}
-            >
-              <Field label="Developer token (optional)" htmlFor="cn-ph-token">
-                <SecretInput
-                  id="cn-ph-token"
-                  autoComplete="off"
-                  value={c.producthunt.token}
-                  onChange={(e) => form.patch({ producthunt: { ...c.producthunt, token: e.target.value.trim().replace(/^Bearer\s+/i, '') } })}
-                />
-              </Field>
-            </Section>
-
-            <Section
-              id="cn-upwork"
-              name="upwork_inbox"
-              title="Upwork alerts from my inbox"
-              what="Reads the job alert emails Upwork sends you and turns them into leads. It only reads. It never changes or deletes your emails."
-              enabled={c.upwork_inbox.enabled}
-              onToggle={(v) => form.patch({ upwork_inbox: { ...c.upwork_inbox, enabled: v } })}
-              hasKey={inboxReady}
-              keyWord="Needs setup"
-              status={st.upwork_inbox}
-              steps={[
-                'On Upwork, save a search for each kind of work you want and turn on email alerts for it.',
-                'Set up the inbox that receives those emails in the Reply tracking tab (no extra key is needed).',
-                'Switch this on and press Test connection.',
-              ]}
-              {...common}
-            >
-              {!inboxReady && (
-                <div className="sm:col-span-2">
-                  <Notice tone="info">
-                    No key is needed here, but I need to read your inbox first. Fill in the <Link href="/settings?tab=imap" className="font-semibold underline">Reply tracking</Link> tab.
-                  </Notice>
-                </div>
-              )}
-            </Section>
+              </div>
+            </Advanced>
           </div>
         )}
         <SaveBar dirty={form.dirty} saving={form.saving} onSave={() => void save()} onReset={form.reset} error={form.error} />
       </Card>
 
-      <Card title="Keys that live in other tabs" subtitle="These are set up elsewhere in Settings. Here is where they stand.">
+      <Card title="Set up in other tabs" subtitle="These are not keys, but they matter too. Here is where they stand.">
         {others === null ? (
           <p className="text-sm text-fg-subtle">Loading…</p>
         ) : (
@@ -361,11 +336,11 @@ export default function ConnectionsTab() {
             {others.map((o) => (
               <li key={o.tab} className="flex flex-wrap items-center gap-2 py-2.5">
                 <span className={`${pill} ${o.ready ? 'bg-success-soft text-success ring-success-border' : 'bg-warning-soft text-warning ring-warning-border'}`}>
-                  {o.ready ? 'Ready' : 'Needs setup'}
+                  {o.ready ? 'Working' : 'Not set up yet'}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="break-words text-sm font-medium text-fg">{o.label}</p>
-                  <p className="text-xs text-fg-subtle">{o.note}</p>
+                  <p className="text-sm text-fg-subtle">{o.note}</p>
                 </div>
                 <Link href={`/settings?tab=${o.tab}`} className="text-sm font-semibold text-primary-text hover:underline">
                   Open

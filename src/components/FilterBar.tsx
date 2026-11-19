@@ -7,18 +7,18 @@ import { Button, Chip, Kbd, Popover, SegmentedControl, Select, Tabs, cx } from '
 import { FilterIcon, GridIcon, ListIcon, SearchIcon, XIcon } from './Icons';
 
 const TRUST_OPTIONS: { value: TrustFilter; label: string }[] = [
-  { value: 'All', label: 'Any trust level' },
-  { value: 'High', label: 'High trust' },
-  { value: 'Medium', label: 'Medium trust' },
-  { value: 'Low', label: 'Low trust' },
-  { value: 'Suspicious', label: 'Suspicious only' },
+  { value: 'All', label: 'Any' },
+  { value: 'High', label: 'Looks real' },
+  { value: 'Medium', label: 'Check first' },
+  { value: 'Low', label: 'Be careful' },
+  { value: 'Suspicious', label: 'Only the ones to be careful with' },
 ];
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'fit', label: 'Best match first' },
   { value: 'newest', label: 'Newest first' },
-  { value: 'fit', label: 'Best match' },
-  { value: 'trust', label: 'Highest trust' },
-  { value: 'budget', label: 'Highest budget' },
+  { value: 'trust', label: 'Most trustworthy' },
+  { value: 'budget', label: 'Biggest budget' },
 ];
 
 export type FilterBarProps = {
@@ -62,7 +62,7 @@ export default function FilterBar({ state, onChange, sources, statusCounts, kind
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search title, company, author or tag"
+            placeholder="Search by title, company or person"
             className="ctl w-full rounded-ctl border border-border-strong bg-surface py-1.5 pl-8 pr-8 text-sm text-fg placeholder:text-fg-subtle coarse:min-h-11"
           />
           <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 lg:block">{!q && <Kbd>/</Kbd>}</span>
@@ -93,7 +93,7 @@ export default function FilterBar({ state, onChange, sources, statusCounts, kind
         >
           <div className="space-y-4 p-3.5">
             <div>
-              <p className="mb-1.5 text-[13px] font-medium text-fg">Category</p>
+              <p className="mb-1.5 text-[13px] font-medium text-fg">What they want</p>
               <div className="flex flex-wrap gap-1.5">
                 {(['All', ...CATEGORIES] as const).map((c) => (
                   <Chip key={c} selected={state.category === c} onClick={() => onChange({ category: c })}>
@@ -104,7 +104,7 @@ export default function FilterBar({ state, onChange, sources, statusCounts, kind
             </div>
             <div>
               <label htmlFor="filter-source" className="mb-1 block text-[13px] font-medium text-fg">
-                Source
+                Where it was found
               </label>
               <Select id="filter-source" value={state.source} onChange={(e) => onChange({ source: e.target.value })}>
                 <option value="All">All sources</option>
@@ -117,7 +117,7 @@ export default function FilterBar({ state, onChange, sources, statusCounts, kind
             </div>
             <div>
               <label htmlFor="filter-trust" className="mb-1 block text-[13px] font-medium text-fg">
-                Trust
+                Can I trust it?
               </label>
               <Select id="filter-trust" value={state.trust} onChange={(e) => onChange({ trust: e.target.value as TrustFilter })}>
                 {TRUST_OPTIONS.map((o) => (
@@ -134,7 +134,7 @@ export default function FilterBar({ state, onChange, sources, statusCounts, kind
             )}
           </div>
         </Popover>
-        <div className="w-[9.5rem]">
+        <div className="w-[11rem]">
           <label htmlFor="lead-sort" className="sr-only">
             Sort by
           </label>
@@ -165,7 +165,7 @@ export default function FilterBar({ state, onChange, sources, statusCounts, kind
           active={state.status}
           onChange={(status) => onChange({ status })}
           className="!flex-nowrap w-max px-2 [&>*]:shrink-0 [&>*]:whitespace-nowrap"
-          tabs={(['All', ...STATUSES] as StatusTab[]).map((s) => ({ id: s, label: s, count: statusCounts[s] }))}
+          tabs={([...STATUSES, 'All'] as StatusTab[]).map((s) => ({ id: s, label: s, count: statusCounts[s] }))}
         />
         </div>
         {hasActive && (

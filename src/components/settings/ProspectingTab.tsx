@@ -8,6 +8,7 @@ import type { ProspectingSettings } from '@/lib/types';
 import { useShell } from '../AppShell';
 import { SearchIcon } from '../Icons';
 import { Card, Field, JobNote, Spinner, TagInput, Toggle, btnSecondary, inputCls } from '../ui';
+import Advanced from './Advanced';
 import SaveBar from './SettingsSaveBar';
 
 const OWNED: (keyof ProspectingSettings)[] = ['enabled', 'cities', 'business_types', 'per_run_limit', 'interval_hours', 'places_enabled', 'places_niches'];
@@ -85,7 +86,7 @@ export default function ProspectingTab() {
   return (
     <div className="space-y-4">
       <Card
-        title="Local prospecting"
+        title="Local business search"
         subtitle="Finds local businesses that have no website, using free OpenStreetMap data. They are good people to offer a first website."
       >
         {form.loading ? (
@@ -96,7 +97,7 @@ export default function ProspectingTab() {
               id="pr-on"
               checked={p.enabled}
               onChange={(v) => form.patch({ enabled: v })}
-              label="Look for prospects automatically"
+              label="Search for local businesses automatically"
               description="They show up under Local prospects on the Leads page. They never trigger alerts."
             />
 
@@ -121,8 +122,9 @@ export default function ProspectingTab() {
               </div>
             </fieldset>
 
+            <Advanced id="prospecting" hint="Other business kinds, how many per search and how often.">
             <Field
-              label="Other kinds (advanced)"
+              label="Other kinds of business"
               htmlFor="pr-extra"
               hint="OpenStreetMap tags such as shop=jewelry or amenity=pharmacy. Leave empty if you are not sure."
             >
@@ -157,6 +159,7 @@ export default function ProspectingTab() {
                 />
               </Field>
             </div>
+            </Advanced>
           </div>
         )}
         <SaveBar dirty={form.dirty} saving={form.saving} onSave={() => void save()} onReset={form.reset} error={form.error} />
@@ -175,7 +178,7 @@ export default function ProspectingTab() {
               checked={p.places_enabled}
               onChange={(v) => form.patch({ places_enabled: v })}
               label="Also look up businesses through Google Places"
-              description="Needs a Serper API key in Connections. Each search uses a little of your Serper credit, at most four searches per run."
+              description="Needs a Serper key in Connections. Each search uses a little of your Serper credit, at most four searches per run."
             />
             <Field label="Business niches" htmlFor="pl-niches" hint="Plain words, for example: plumber, dentist, wedding photographer. Press Enter after each one.">
               <TagInput id="pl-niches" label="Business niches" value={p.places_niches} onChange={(v) => form.patch({ places_niches: v })} placeholder="Add a niche" />
@@ -185,30 +188,30 @@ export default function ProspectingTab() {
                 {runPlaces.running ? <Spinner /> : <SearchIcon className="h-4 w-4" />}
                 Find with Google Places now
               </button>
-              {(p.cities.length === 0 || p.places_niches.length === 0) && <span className="text-xs text-fg-subtle">Add a city and a niche first.</span>}
+              {(p.cities.length === 0 || p.places_niches.length === 0) && <span className="text-sm text-fg-subtle">Add a city and a niche first.</span>}
             </div>
             <JobNote phase={runPlaces.phase} error={runPlaces.error} runningText="Searching and checking websites. This can take a minute…" />
-            <p className="text-xs text-fg-subtle">
-              Add or change your key in <Link href="/settings?tab=connections" className="font-semibold text-primary-text hover:underline">Connections</Link>. Google data can be out of date, so check a business is open before you contact it.
+            <p className="text-sm text-fg-subtle">
+              Add or change your key in <Link href="/settings?tab=connections" className="font-semibold text-primary-text hover:underline">Connections & keys</Link>. Google data can be out of date, so check a business is open before you contact it.
             </p>
           </div>
         )}
       </Card>
 
-      <Card title="Find prospects now">
+      <Card title="Search now">
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" onClick={() => void runNow()} disabled={run.running || p.cities.length === 0} className={btnSecondary}>
             {run.running ? <Spinner /> : <SearchIcon className="h-4 w-4" />}
-            Find prospects now
+            Search for local businesses now
           </button>
-          {p.cities.length === 0 && <span className="text-xs text-fg-subtle">Add at least one city first.</span>}
+          {p.cities.length === 0 && <span className="text-sm text-fg-subtle">Add at least one city first.</span>}
         </div>
         <div className="mt-3 space-y-1">
           <JobNote phase={run.phase} error={run.error} runningText="Searching OpenStreetMap. This can take a minute…" />
-          <p className="text-xs text-fg-subtle">
+          <p className="text-sm text-fg-subtle">
             {form.saved.last_run ? `Last search: ${fmtDateTime(form.saved.last_run)}${last ? `, ${last}` : ''}.` : 'No search yet.'}
           </p>
-          <p className="text-xs text-fg-subtle">OpenStreetMap is edited by volunteers, so check that a business is still open before you contact it.</p>
+          <p className="text-sm text-fg-subtle">OpenStreetMap is edited by volunteers, so check that a business is still open before you contact it.</p>
         </div>
       </Card>
     </div>

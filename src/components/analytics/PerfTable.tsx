@@ -10,7 +10,7 @@ const COLS: { key: PerfKey; label: string; numeric?: boolean }[] = [
   { key: 'replied', label: 'Replied', numeric: true },
   { key: 'won', label: 'Won', numeric: true },
   { key: 'winRate', label: 'Win rate', numeric: true },
-  { key: 'avgTrust', label: 'Avg trust', numeric: true },
+  { key: 'avgTrust', label: 'Looks real (avg)', numeric: true },
 ];
 
 /** Sortable performance table. A small in-cell bar next to the lead count helps scanning, the number is always printed. */

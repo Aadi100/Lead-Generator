@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Lead, OutreachRow } from '@/lib/types';
-import { budgetLabel, displayDate, fmtDateTime, isFlagged, itemLabel, splitContact, timeAgo } from '@/lib/format';
+import { budgetLabel, displayDate, fmtDateTime, isFlagged, splitContact, timeAgo } from '@/lib/format';
 import { outreachChip } from '@/lib/outreach';
 import { Badge, CategoryChip, ProgressBar, TrustBadge, cx } from '@/components/ui';
 import { AlertIcon, SparkIcon, UserIcon } from '@/components/Icons';
@@ -21,6 +21,24 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 
 export default function LeadOverview({ lead, rows, now }: { lead: Lead; rows: OutreachRow[]; now: number }) {
   const [expanded, setExpanded] = useState(false);
+  const [details, setDetails] = useState(false);
+  useEffect(() => {
+    try {
+      setDetails(localStorage.getItem('lead-radar:lead-details-open') === '1');
+    } catch {
+      // storage unavailable
+    }
+  }, []);
+  const toggleDetails = () => {
+    setDetails((v) => {
+      try {
+        localStorage.setItem('lead-radar:lead-details-open', v ? '0' : '1');
+      } catch {
+        // storage unavailable
+      }
+      return !v;
+    });
+  };
   const flagged = isFlagged(lead);
   const budget = budgetLabel(lead);
   const contacts = splitContact(lead.contact);
@@ -38,9 +56,7 @@ export default function LeadOverview({ lead, rows, now }: { lead: Lead; rows: Ou
           {lead.source}
           {lead.source_detail ? ` · ${lead.source_detail}` : ''}
         </Badge>
-        <Badge>{lead.type}</Badge>
         {chip && <span className={cx('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset', chip.tone)}>{chip.label}</span>}
-        {lead.item_type && <Badge>{itemLabel(lead.item_type)}</Badge>}
       </div>
 
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
@@ -121,10 +137,17 @@ export default function LeadOverview({ lead, rows, now }: { lead: Lead; rows: Ou
         </section>
       )}
 
+      <button type="button" onClick={toggleDetails} aria-expanded={details} className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded text-sm font-medium text-primary-text hover:underline coarse:min-h-11">
+        {details ? 'Hide details' : 'Show details'}
+        <span className="text-xs font-normal text-fg-subtle">scores, ranking, dates</span>
+      </button>
+
+      {details && (
+      <>
       <section aria-label="Why this lead scored the way it did" className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-card border border-border bg-surface-2/50 p-3">
           <div className="flex items-center justify-between gap-2">
-            <SectionTitle>Match</SectionTitle>
+            <SectionTitle>Why it fits you</SectionTitle>
             <FitBadge lead={lead} />
           </div>
           {lead.fit_score === null ? (
@@ -149,7 +172,7 @@ export default function LeadOverview({ lead, rows, now }: { lead: Lead; rows: Ou
         </div>
         <div className="rounded-card border border-border bg-surface-2/50 p-3">
           <div className="flex items-center justify-between gap-2">
-            <SectionTitle>Trust</SectionTitle>
+            <SectionTitle>Can I trust it?</SectionTitle>
             <TrustBadge level={lead.trust_level} score={lead.trust_score} />
           </div>
           {lead.trust_score === null ? (
@@ -177,6 +200,8 @@ export default function LeadOverview({ lead, rows, now }: { lead: Lead; rows: Ou
           {lead.outcome_note && <Fact label="Outcome note">{lead.outcome_note}</Fact>}
         </dl>
       </section>
+      </>
+      )}
     </div>
   );
 }

@@ -21,11 +21,11 @@ export type LeadsState = {
 export const DEFAULT_STATE: LeadsState = {
   kind: 'all',
   q: '',
-  status: 'All',
+  status: 'New', // best new leads first
   category: 'All',
   source: 'All',
   trust: 'All',
-  sort: 'newest',
+  sort: 'fit',
   view: 'list',
   lead: null,
 };
@@ -43,11 +43,11 @@ export function parseState(get: (key: string) => string | null): LeadsState {
   return {
     kind: kind === 'request' || kind === 'prospect' ? kind : 'all',
     q: get('q') ?? '',
-    status: status && (STATUSES as readonly string[]).includes(status) ? (status as StatusTab) : 'All',
+    status: status && (STATUSES as readonly string[]).includes(status) || status === 'All' ? (status as StatusTab) : DEFAULT_STATE.status,
     category: category && (CATEGORIES as readonly string[]).includes(category) ? category : 'All',
     source: get('src') || 'All',
     trust: trust && (TRUSTS as string[]).includes(trust) ? (trust as TrustFilter) : 'All',
-    sort: sort && (SORTS as string[]).includes(sort) ? (sort as SortKey) : 'newest',
+    sort: sort && (SORTS as string[]).includes(sort) ? (sort as SortKey) : DEFAULT_STATE.sort,
     view: view === 'cards' ? 'cards' : 'list',
     lead: get('lead') || null,
   };
@@ -57,11 +57,11 @@ export function stateToQuery(s: LeadsState): string {
   const p = new URLSearchParams();
   if (s.kind !== 'all') p.set('kind', s.kind);
   if (s.q.trim()) p.set('q', s.q.trim());
-  if (s.status !== 'All') p.set('status', s.status);
+  if (s.status !== DEFAULT_STATE.status) p.set('status', s.status);
   if (s.category !== 'All') p.set('cat', s.category);
   if (s.source !== 'All') p.set('src', s.source);
   if (s.trust !== 'All') p.set('trust', s.trust);
-  if (s.sort !== 'newest') p.set('sort', s.sort);
+  if (s.sort !== DEFAULT_STATE.sort) p.set('sort', s.sort);
   if (s.view !== 'list') p.set('view', s.view);
   if (s.lead) p.set('lead', s.lead);
   const str = p.toString();
@@ -104,5 +104,5 @@ export function sortLeads(list: Lead[], sort: SortKey): Lead[] {
 }
 
 export function hasActiveFilters(s: LeadsState): boolean {
-  return s.q.trim() !== '' || s.category !== 'All' || s.source !== 'All' || s.trust !== 'All' || s.status !== 'All' || s.kind !== 'all';
+  return s.q.trim() !== '' || s.category !== 'All' || s.source !== 'All' || s.trust !== 'All' || s.status !== DEFAULT_STATE.status || s.kind !== 'all';
 }

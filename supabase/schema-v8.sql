@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS price_points (
   currency      TEXT NOT NULL DEFAULT 'USD',
   price_usd     NUMERIC,                            -- estimate using the rate table in app_settings.price_rates
   kind          TEXT NOT NULL DEFAULT 'sold',       -- sold (real sale, strongest) | asking (a seller's ad) | offer (a buyer's offer)
-  source        TEXT,                               -- platform: Discord, Reddit, Eldorado ...
+  source        TEXT,                               -- platform: Reddit, Eldorado ...
   origin        TEXT NOT NULL DEFAULT 'manual',     -- manual | stock | deal | lead
   ref_key       TEXT UNIQUE,                        -- idempotency for automatic rows, e.g. deal:<id>
   lead_id       UUID REFERENCES leads(id) ON DELETE SET NULL,

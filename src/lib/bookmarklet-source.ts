@@ -39,35 +39,6 @@ export const BOOKMARKLET_SOURCE = String.raw`(function () {
     sel = clean(sel);
     if (sel.length > 20) {
       items.push({ text: cut(sel, MAX_TEXT) });
-    } else if (/(^|\.)discord\.com$/i.test(host) && String(location.pathname).indexOf('/channels/') === 0) {
-      var pm = /^\/channels\/([^\/]+)\/(\d+)/.exec(String(location.pathname));
-      if (pm) {
-        var nodes = document.querySelectorAll('li[id^="chat-messages-"]');
-        var lastAuthor = '';
-        var found = [];
-        for (var i = 0; i < nodes.length; i++) {
-          var li = nodes[i];
-          if (!visible(li)) continue;
-          var idm = /^chat-messages-(\d+)-(\d+)$/.exec(String(li.id || ''));
-          if (!idm) continue;
-          var un = li.querySelector('[class*="username"]');
-          if (un) {
-            var who = flat(un.textContent);
-            if (who) lastAuthor = who;
-          }
-          var ce = li.querySelector('[id^="message-content-"]');
-          var t = ce ? clean(ce.innerText || ce.textContent) : '';
-          if (t.length < 5) continue;
-          var it = {
-            text: cut(t, MAX_TEXT),
-            url: 'https://discord.com/channels/' + pm[1] + '/' + idm[1] + '/' + idm[2],
-            channel_label: cut(flat(document.title), 120)
-          };
-          if (lastAuthor) it.author = lastAuthor;
-          found.push(it);
-        }
-        items = found.slice(-MAX_ITEMS);
-      }
     } else {
       var anchors = document.querySelectorAll('a[href]');
       var seenHref = {};

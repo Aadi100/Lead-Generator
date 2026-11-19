@@ -274,10 +274,8 @@ export type AlertSettings = {
   min_trust: number;
   only_non_suspicious: boolean;
   on_reply: boolean;
-  telegram: { bot_token: string; chat_id: string };
   email: { to: string };
   whatsapp: { phone: string; apikey: string };
-  discord: { webhook_url: string };
 };
 
 export type ProspectingSettings = {
@@ -378,7 +376,6 @@ export type TradingSettings = {
   i_want: TradeEntry[];
   games: string[];
   extra_subreddits: string[];
-  discord: { enabled: boolean; channels: { id: string; label: string }[] };
   suggestions: TradingSuggestions | null;
   last_run: string | null;
   last_result: Record<string, unknown> | string | null;
@@ -402,12 +399,11 @@ export type TradeMarket = {
 };
 
 export type TradeState = {
-  discord: Record<string, string>;
   reddit_last_run: string | null;
   subs_ok: string[];
 };
 
-export type IntegrationName = 'serper' | 'x' | 'reddit_api' | 'discord' | 'upwork_inbox' | 'producthunt' | 'indiehackers' | 'linkedin' | 'fiverr' | 'places';
+export type IntegrationName = 'serper' | 'x' | 'reddit_api' | 'upwork_inbox' | 'producthunt' | 'indiehackers' | 'linkedin' | 'fiverr' | 'places';
 export type IntegrationStatus = { ok: boolean; checked_at: string | null; message: string };
 
 export type IntegrationsSettings = {
@@ -415,7 +411,6 @@ export type IntegrationsSettings = {
   producthunt: { enabled: boolean; token: string };
   x: { enabled: boolean; bearer_token: string };
   reddit_api: { enabled: boolean; client_id: string; client_secret: string; username: string };
-  discord: { bot_token: string };
   upwork_inbox: { enabled: boolean };
   status: Partial<Record<IntegrationName, IntegrationStatus>>;
 };

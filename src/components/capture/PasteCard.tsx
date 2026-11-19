@@ -64,7 +64,7 @@ export default function PasteCard() {
     <Card
       className="glass"
       title="Paste text"
-      subtitle="Copy a post from anywhere (a Discord message, a Telegram post, a forum thread, a marketplace request) and paste it here."
+      subtitle="Copy a post from anywhere (a forum thread, a marketplace request, a chat message) and paste it here."
     >
       {!workerOnline && !finished && (
         <div className="mb-3">
@@ -92,7 +92,7 @@ export default function PasteCard() {
               <input id="paste-link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" inputMode="url" className={inputCls} />
               {!linkOk && <p className="mt-1 text-xs text-danger">Use a full link that starts with http:// or https://.</p>}
             </Field>
-            <Field label="Where is it from? (optional)" htmlFor="paste-source" hint="For example Discord: Trading Hub.">
+            <Field label="Where is it from? (optional)" htmlFor="paste-source" hint="For example Reddit: r/GameTrade.">
               <input id="paste-source" value={source} onChange={(e) => setSource(e.target.value)} maxLength={60} className={inputCls} />
             </Field>
           </div>

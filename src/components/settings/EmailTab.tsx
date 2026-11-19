@@ -9,6 +9,7 @@ import type { SendingSettings } from '@/lib/types';
 import { useShell } from '../AppShell';
 import { MailIcon } from '../Icons';
 import { Card, Field, JobNote, Notice, Spinner, TagInput, Toggle, btnSecondary, inputCls } from '../ui';
+import Advanced from './Advanced';
 import SaveBar from './SettingsSaveBar';
 import SecretInput from './SecretInput';
 import { ResultChip } from './StatusChip';
@@ -99,7 +100,7 @@ export default function EmailTab() {
 
   return (
     <div className="space-y-4">
-      <Card title="How emails are sent" subtitle="Pick one. Nothing is ever sent until you press Send now on a pitch.">
+      <Card title="Where emails go out from" subtitle="Pick one. Nothing is ever sent until you press Send now on a message.">
         {loading ? (
           <p className="text-sm text-fg-subtle">Loading…</p>
         ) : (
@@ -109,9 +110,9 @@ export default function EmailTab() {
               <div className="grid gap-2 sm:grid-cols-3">
                 {(
                   [
-                    { v: 'smtp', t: 'My own email (SMTP)', d: 'Gmail, Outlook, your hosting or any mail server' },
-                    { v: 'resend', t: 'Resend', d: 'A sending service with a simple key' },
-                    { v: 'none', t: 'Not set up yet', d: 'You can still write and copy pitches' },
+                    { v: 'smtp', t: 'My own email account', d: 'Gmail, Outlook, your hosting or any mail server' },
+                    { v: 'resend', t: 'An email service (Resend)', d: 'A sending service that only needs one key' },
+                    { v: 'none', t: 'Not set up yet', d: 'You can still write and copy messages' },
                   ] as const
                 ).map((o) => (
                   <label
@@ -129,7 +130,7 @@ export default function EmailTab() {
                     />
                     <span>
                       <span className="block font-medium text-fg">{o.t}</span>
-                      <span className="text-xs text-fg-subtle">{o.d}</span>
+                      <span className="text-sm text-fg-subtle">{o.d}</span>
                     </span>
                   </label>
                 ))}
@@ -152,7 +153,7 @@ export default function EmailTab() {
                   ))}
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Mail server (host)" htmlFor="smtp-host" error={err('host', hostError(smtp.draft.host))}>
+                  <Field label="Mail server" hint="The address of your email provider, for example smtp.gmail.com." htmlFor="smtp-host" error={err('host', hostError(smtp.draft.host))}>
                     <input id="smtp-host" className={inputCls} onBlur={blur('host')} value={smtp.draft.host} onChange={(e) => smtp.patch({ host: e.target.value })} placeholder="smtp.gmail.com" />
                   </Field>
                   <Field label="Port" htmlFor="smtp-port" error={err('port', portError(smtp.draft.port))}>
@@ -165,10 +166,10 @@ export default function EmailTab() {
                       onChange={(e) => smtp.patch({ port: Number(e.target.value) || 0 })}
                     />
                   </Field>
-                  <Field label="Username" htmlFor="smtp-user">
+                  <Field label="Email login (username)" htmlFor="smtp-user">
                     <input id="smtp-user" autoComplete="off" className={inputCls} value={smtp.draft.user} onChange={(e) => smtp.patch({ user: e.target.value })} />
                   </Field>
-                  <Field label="Password" htmlFor="smtp-pass">
+                  <Field label="Email password" htmlFor="smtp-pass">
                     <SecretInput
                       id="smtp-pass"
                       autoComplete="new-password"
@@ -184,15 +185,15 @@ export default function EmailTab() {
                   label="Use a secure connection from the start"
                   description="Turn on for port 465. Leave off for port 587, which upgrades by itself."
                 />
-                <p className="text-xs text-fg-subtle">
-                  Gmail and Outlook need an app password, not your normal password. In Gmail, open Google Account, Security, 2-Step Verification, then App passwords.
+                <p className="text-sm text-fg-subtle">
+                  Where do I get this? Gmail and Outlook need an app password, not your normal one. In Gmail: Google Account, Security, 2-Step Verification, App passwords.
                 </p>
               </div>
             )}
 
             {s.provider === 'resend' && (
               <div className="space-y-3 rounded-lg border border-border bg-surface-2 p-3">
-                <Field label="Resend API key" htmlFor="rs-key" hint="Create it at resend.com. Your From address below must use a domain you verified there.">
+                <Field label="Email service key" htmlFor="rs-key" hint="Where do I get this? Create a free account at resend.com and make a key. Your From address must use a domain you verified there.">
                   <SecretInput
                     id="rs-key"
                     autoComplete="new-password"
@@ -204,25 +205,22 @@ export default function EmailTab() {
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Field label="From name" htmlFor="from-name">
                 <input id="from-name" className={inputCls} value={s.from_name} onChange={(e) => sending.patch({ from_name: e.target.value })} />
               </Field>
               <Field label="From email" htmlFor="from-email" error={err('from', emailError(s.from_email, s.provider !== 'none'))}>
                 <input id="from-email" type="email" className={inputCls} onBlur={blur('from')} value={s.from_email} onChange={(e) => sending.patch({ from_email: e.target.value })} />
               </Field>
-              <Field label="Replies go to" htmlFor="reply-to" hint="Optional. Leave empty to use the From email." error={err('reply', emailError(s.reply_to))}>
-                <input id="reply-to" type="email" className={inputCls} onBlur={blur('reply')} value={s.reply_to} onChange={(e) => sending.patch({ reply_to: e.target.value })} />
-              </Field>
             </div>
           </div>
         )}
       </Card>
 
-      <Card title="Limits and follow-ups">
+      <Card title="Sending limits">
         {!loading && (
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Most emails per day" htmlFor="daily-limit" hint="A low number protects your email reputation. Start with 20.">
                 <input
                   id="daily-limit"
@@ -233,26 +231,33 @@ export default function EmailTab() {
                   onChange={(e) => sending.patch({ daily_limit: Math.max(0, Number(e.target.value) || 0) })}
                 />
               </Field>
+            </div>
+            <Toggle
+              id="auto-fu"
+              checked={s.auto_followups}
+              onChange={(v) => sending.patch({ auto_followups: v })}
+              label="Write follow-ups with every message"
+              description="They only go out if the person has not replied, and only after you press Send now on the first email."
+            />
+            <Advanced id="email" hint="Reply address, follow-up timing, email footer and your own domains.">
+              <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Replies go to" htmlFor="reply-to" hint="Optional. Leave empty to use the From email." error={err('reply', emailError(s.reply_to))}>
+                <input id="reply-to" type="email" className={inputCls} onBlur={blur('reply')} value={s.reply_to} onChange={(e) => sending.patch({ reply_to: e.target.value })} />
+              </Field>
               <Field label="First follow-up after (days)" htmlFor="fu1">
                 <input id="fu1" type="number" min={1} className={inputCls} value={d1} disabled={!s.auto_followups} onChange={(e) => setDays(e.target.value, d2)} />
               </Field>
               <Field label="Second follow-up after (days)" htmlFor="fu2" hint="Leave empty for only one follow-up.">
                 <input id="fu2" type="number" min={1} className={inputCls} value={d2} disabled={!s.auto_followups} onChange={(e) => setDays(d1, e.target.value)} />
               </Field>
-            </div>
-            <Toggle
-              id="auto-fu"
-              checked={s.auto_followups}
-              onChange={(v) => sending.patch({ auto_followups: v })}
-              label="Write follow-ups with every pitch"
-              description="They only go out if the person has not replied, and only after you press Send now on the first email."
-            />
+              </div>
             <Field label="Line added at the bottom of every email" htmlFor="footer" hint="Keep a way for people to opt out. It is good manners and often the law.">
               <textarea id="footer" rows={2} className={`${inputCls} resize-y`} value={s.footer} onChange={(e) => sending.patch({ footer: e.target.value })} />
             </Field>
             <Field label="Websites that are yours" htmlFor="owned" hint="Links to these are allowed in pitches. Your websites from your profile are already allowed.">
               <TagInput id="owned" label="Your domains" value={s.owned_domains} onChange={(v) => sending.patch({ owned_domains: v })} placeholder="yourwebsite.com" />
             </Field>
+            </Advanced>
           </div>
         )}
         <SaveBar dirty={dirty} saving={saving} onSave={() => void saveAll()} onReset={() => { sending.reset(); smtp.reset(); resend.reset(); }} error={error} />
@@ -280,7 +285,7 @@ export default function EmailTab() {
           {test.phase === 'done' && !testError && <ResultChip state="ok" message="Test email sent. Check the inbox." />}
           {testError && <ResultChip state="bad" message={testError} />}
           {(test.phase === 'failed' || test.phase === 'timeout') && <ResultChip state="bad" message={test.error ?? 'The test email failed.'} />}
-          {s.provider === 'none' && <p className="text-xs text-fg-subtle">Choose SMTP or Resend above first.</p>}
+          {s.provider === 'none' && <p className="text-sm text-fg-subtle">Choose an email account or service above first.</p>}
         </div>
       </Card>
     </div>

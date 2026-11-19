@@ -6,7 +6,6 @@ import { userAgent, searchUrl } from '../lib/src-redditapi.mjs';
 import { xSearchUrl } from '../lib/src-x.mjs';
 import { countUpworkMail, imapReady } from '../lib/src-upwork.mjs';
 
-const DISCORD_UA = 'DiscordBot (lead-radar, 1.0)';
 const fail = (name, res, host) => ({ ok: false, message: explainHttp(name, res, host).message });
 
 async function testSerper(cfg, d) {
@@ -42,43 +41,6 @@ async function testReddit(cfg, d) {
   return { ok: true, message: `Connected. Reddit accepted the app.${note}` };
 }
 
-function discordProblem(label, res) {
-  const code = res.json?.code;
-  if (res.status === 401) return `${label}: Discord rejected the token (401).`;
-  if (res.status === 404 || code === 10003) return `${label}: channel id not found. Check the id.`;
-  if (res.status === 403 && code === 50001) return `${label}: the bot cannot see this channel (Missing Access). Invite the bot to that server and give it View Channel.`;
-  if (res.status === 403 && code === 50013) return `${label}: the bot is missing permissions here. Give it View Channel and Read Message History.`;
-  if (res.status === 403) return `${label}: access denied (403). The bot needs View Channel and Read Message History.`;
-  if (res.status === 429) return `${label}: Discord rate limit reached. Try again in a minute.`;
-  return `${label}: Discord replied ${res.status || 'with a network error'}.`;
-}
-
-async function testDiscord(cfg, d) {
-  const token = String(cfg.bot_token || '').trim().replace(/^bot\s+/i, '');
-  if (!token) return { ok: false, message: 'Paste your Discord bot token first.' };
-  const headers = { Authorization: `Bot ${token}` };
-  const me = await d.fetchJson('https://discord.com/api/v10/users/@me', { headers, ua: DISCORD_UA });
-  if (!me.ok) return { ok: false, message: me.status === 401 ? 'Discord rejected the bot token (401). Copy it again from the Developer Portal > Bot > Reset Token.' : explainHttp('discord', me, 'discord.com').message };
-  const channels = (d.trading?.discord?.channels || []).filter((c) => c && c.id).slice(0, 10);
-  if (!channels.length) return { ok: true, message: `Bot "${me.json?.username || 'unknown'}" is connected. Add channel ids in Settings > Trading to start reading them.` };
-
-  const lines = [];
-  let readable = 0;
-  let emptyContent = false;
-  for (const ch of channels) {
-    const label = ch.label || ch.id;
-    const res = await d.fetchJson(`https://discord.com/api/v10/channels/${encodeURIComponent(ch.id)}/messages?limit=5`, { headers, ua: DISCORD_UA });
-    if (!res.ok) { lines.push(discordProblem(label, res)); continue; }
-    readable++;
-    const msgs = Array.isArray(res.json) ? res.json : [];
-    if (msgs.some((m) => m && !m.author?.bot && !m.content && !(m.embeds || []).length && !(m.attachments || []).length)) emptyContent = true;
-    lines.push(`${label}: readable.`);
-  }
-  if (emptyContent) lines.push('Some messages came back empty: turn on "Message Content Intent" in the Developer Portal > Bot, or the bot cannot read what people write.');
-  const ok = readable > 0 && !emptyContent;
-  return { ok, message: `Bot "${me.json?.username || 'unknown'}" is connected. ${lines.join(' ')}`.slice(0, 300) };
-}
-
 async function testUpwork(cfg, d) {
   const imap = d.imap || (await getSetting('imap'));
   if (!imapReady(imap)) return { ok: false, message: 'Set up the inbox first (Settings > Reply tracking: host, user and password).' };
@@ -100,13 +62,12 @@ async function testProductHunt(cfg, d) {
   return res.status === 401 || res.json?.errors ? { ok: false, message: 'Product Hunt rejected the token. Create a developer token at producthunt.com/v2/oauth/applications and paste it again.' } : fail('producthunt', res, 'api.producthunt.com');
 }
 
-const TESTS = { producthunt: testProductHunt, serper: testSerper, x: testX, reddit_api: testReddit, discord: testDiscord, upwork_inbox: testUpwork };
+const TESTS = { producthunt: testProductHunt, serper: testSerper, x: testX, reddit_api: testReddit, upwork_inbox: testUpwork };
 
 export async function testIntegration(name, deps = {}) {
   const fn = TESTS[name];
   if (!fn) return { ok: false, message: `Unknown connection "${name}".` };
   const d = { fetchJson, countMail: countUpworkMail, setStatus: recordStatus, ...deps };
-  d.trading = d.trading || (name === 'discord' ? await getSetting('trading') : {});
   const cfg = (d.integrations || (await getIntegrations()))[name] || {};
   let result;
   try {

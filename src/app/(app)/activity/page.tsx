@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { FEED_KINDS, FEED_LABEL, FEED_PAGE, FEED_TABLES, dayKey, dayLabel, fetchFeedPage, parseKinds, type FeedItem, type FeedKind } from '@/lib/activity-page';
 import { PageContainer, PageHeader } from '@/components/shell';
 import { Banner, Button, Chip, EmptyState, SkeletonRows } from '@/components/ui';
-import { ActivityIcon, RefreshIcon } from '@/components/Icons';
+import { ActivityIcon, FilterIcon, RefreshIcon } from '@/components/Icons';
 import FeedItemRow from '@/components/activity/FeedItemRow';
 
 function ActivityView() {
@@ -21,6 +21,7 @@ function ActivityView() {
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const [showFilters, setShowFilters] = useState(false);
   const seq = useRef(0);
   const itemsRef = useRef<FeedItem[]>([]);
   itemsRef.current = items;
@@ -116,23 +117,30 @@ function ActivityView() {
     <PageContainer width="narrow">
       <PageHeader
         title="Activity"
-        subtitle="Everything that happened, newest first."
+        subtitle="A simple timeline of new leads, messages, replies, deals and tasks, newest first."
         actions={
-          <Button variant="secondary" leftIcon={<RefreshIcon className="h-4 w-4" aria-hidden="true" />} onClick={() => void loadFirst()}>
+          <Button variant="ghost" leftIcon={<RefreshIcon className="h-4 w-4" aria-hidden="true" />} onClick={() => void loadFirst()}>
             Refresh
           </Button>
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label="Filter by type">
-        <Chip selected={kinds.length === 0} onClick={() => setKinds([])}>
-          Everything
-        </Chip>
-        {FEED_KINDS.map((k) => (
-          <Chip key={k} selected={kinds.includes(k)} onClick={() => toggle(k)}>
-            {FEED_LABEL[k]}
-          </Chip>
-        ))}
+      <div className="mb-4">
+        <Button variant="ghost" size="sm" aria-expanded={showFilters || kinds.length > 0} onClick={() => setShowFilters((v) => !v)} leftIcon={<FilterIcon className="h-4 w-4" aria-hidden="true" />}>
+          Filters{kinds.length > 0 ? ` (${kinds.length})` : ''}
+        </Button>
+        {(showFilters || kinds.length > 0) && (
+          <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label="Show only">
+            <Chip selected={kinds.length === 0} onClick={() => setKinds([])}>
+              Everything
+            </Chip>
+            {FEED_KINDS.map((k) => (
+              <Chip key={k} selected={kinds.includes(k)} onClick={() => toggle(k)}>
+                {FEED_LABEL[k]}
+              </Chip>
+            ))}
+          </div>
+        )}
       </div>
 
       {error && (

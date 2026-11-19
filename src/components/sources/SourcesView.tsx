@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { Suspense, useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { PageContainer, PageHeader } from '@/components/shell';
-import { Badge, Banner, Button, Card, Chip, EmptyState, Skeleton, SkeletonRows, Stagger, Table, THead, Th, Tr, Td } from '@/components/ui';
+import { Badge, Banner, Button, Card, Chip, EmptyState, SkeletonRows, Stagger } from '@/components/ui';
+import Advanced from '@/components/settings/Advanced';
 import { RefreshIcon, SourcesIcon } from '@/components/Icons';
 import { timeAgo } from '@/lib/format';
 import { useSourcesData } from '@/lib/sources-data';
@@ -13,32 +14,78 @@ import { AutomationCard } from './AutomationCard';
 import { RunNow } from './RunNow';
 import { STATUS_LABEL, StatusChip, StatusRules } from './StatusChip';
 
-const KIND_LABEL: Record<SourceDef['kind'], string> = { n8n: 'n8n scraper', worker: 'Worker', manual: 'Manual' };
+const KIND_LABEL: Record<SourceDef['kind'], string> = { n8n: 'Lead finder (n8n)', worker: 'Background helper', manual: 'Manual' };
 const FILTERS: ('all' | SourceStatus)[] = ['all', 'problem', 'needs_key', 'quiet', 'healthy', 'off'];
+const LINK_BTN = 'btn inline-flex min-h-9 items-center rounded-ctl border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2';
 
-function Actions({ row, workerOn, onDone }: { row: SourceRow; workerOn: boolean; onDone: () => void }) {
+/** The one action for a source: Add key when it needs one, otherwise Run now, otherwise Switch on. */
+function MainAction({ row, workerOn, onDone }: { row: SourceRow; workerOn: boolean; onDone: () => void }) {
   const { def } = row;
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {def.job && <RunNow def={def} disabled={!workerOn || row.status === 'needs_key'} disabledReason={!workerOn ? 'The worker is off.' : 'Fix the setup first.'} onDone={onDone} />}
-      <Link href={def.configure.href} className="btn inline-flex min-h-7 items-center rounded-ctl border border-border-strong bg-surface px-2.5 py-1 text-[13px] font-medium text-fg hover:bg-surface-2">
-        Configure<span className="sr-only">: {def.name}</span>
+  if (row.status === 'needs_key')
+    return (
+      <Link href={def.configure.href} className={LINK_BTN}>
+        Add key<span className="sr-only">: {def.name}</span>
       </Link>
-    </div>
-  );
+    );
+  if (def.job) return <RunNow def={def} disabled={!workerOn} disabledReason="The background helper is off." onDone={onDone} />;
+  if (row.status === 'off')
+    return (
+      <Link href={def.configure.href} className={LINK_BTN}>
+        Switch on<span className="sr-only">: {def.name}</span>
+      </Link>
+    );
+  return null;
 }
 
-function Name({ row }: { row: SourceRow }) {
+/** Last result in plain words, e.g. "5 new leads today, latest 2 h ago". */
+function lastResult(row: SourceRow, ago: (iso: string | null) => string): string {
+  if (row.def.leadless) return row.status === 'healthy' ? 'Runs in the background.' : row.reason;
+  if (row.status === 'needs_key' || row.status === 'off') return row.reason;
+  const { d1, d7, last } = row.stats;
+  if (!last) return 'No leads yet.';
+  const n = d1 > 0 ? `${d1} new ${d1 === 1 ? 'lead' : 'leads'} today` : `${d7} new ${d7 === 1 ? 'lead' : 'leads'} this week`;
+  return `${n}, latest ${ago(last)}`;
+}
+
+function SourceCard({ row, ago, workerOn, onDone }: { row: SourceRow; ago: (iso: string | null) => string; workerOn: boolean; onDone: () => void }) {
+  const { def } = row;
+  const msg = row.lastRun?.ok && row.lastRun.checked_at && row.lastRun.message ? row.lastRun.message.replace(/^Working[^.]*\.\s*(Last run:\s*)?/i, '') : null;
   return (
-    <div className="min-w-0">
-      <p className="font-medium text-fg">{row.def.name}</p>
-      <p className="mt-0.5 max-w-[34ch] text-xs text-fg-subtle">{row.status === 'healthy' || row.status === 'quiet' ? row.def.hint : row.reason}</p>
-      {row.lastRun?.ok && row.lastRun.checked_at && row.lastRun.message && (
-        <p className="mt-0.5 max-w-[34ch] text-xs text-fg-muted">
-          Last run {timeAgo(row.lastRun.checked_at)}: {row.lastRun.message.replace(/^Working[^.]*\.\s*(Last run:\s*)?/i, '')}
-        </p>
-      )}
-    </div>
+    <li className="flex flex-col rounded-card border border-border bg-surface p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-fg">{def.name}</p>
+          <p className="mt-0.5 text-sm text-fg-muted">{lastResult(row, ago)}</p>
+        </div>
+        <StatusChip status={row.status} reason={row.reason} />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <MainAction row={row} workerOn={workerOn} onDone={onDone} />
+        <details className="w-full text-sm">
+          <summary className="inline-flex min-h-9 cursor-pointer items-center font-semibold text-primary-text">Show details</summary>
+          <div className="mt-1 space-y-2 border-t border-border pt-2 text-[13px] text-fg-muted">
+            <p>{row.status === 'healthy' || row.status === 'quiet' ? def.hint : row.reason}</p>
+            {msg && row.lastRun?.checked_at && (
+              <p>
+                Last run {timeAgo(row.lastRun.checked_at)}: {msg}
+              </p>
+            )}
+            <p>
+              {KIND_LABEL[def.kind]} · runs {def.schedule}
+            </p>
+            {!def.leadless && (
+              <p>
+                Last 24 hours: {row.stats.d1} · last 7 days: {row.stats.d7} · average trust: {row.stats.trustAvg ?? '-'}
+              </p>
+            )}
+            <Link href={def.configure.href} className="inline-block font-medium text-primary-text hover:underline">
+              {def.configure.label || 'Configure'}
+              <span className="sr-only">: {def.name}</span>
+            </Link>
+          </div>
+        </details>
+      </div>
+    </li>
   );
 }
 
@@ -67,12 +114,12 @@ function SourcesBody() {
     return c;
   }, [rows]);
   const shown = filter === 'all' ? rows : rows.filter((r) => r.status === filter);
-  const ago = (iso: string | null) => (iso ? timeAgo(iso, ctx.now) : 'Never');
+  const ago = (iso: string | null) => (iso ? timeAgo(iso, ctx.now) : 'never');
 
   const platform = PLATFORM_WORKFLOWS.map((w) => {
     const failing = failingWorkflow(ctx, { id: w.id, name: w.name, kind: 'n8n', schedule: w.schedule, hint: '', workflow: w.workflow, configure: { href: '', label: '' } });
     const status: SourceStatus = !ctx.n8nOnline || failing ? 'problem' : 'healthy';
-    const reason = !ctx.n8nOnline ? 'n8n has not checked in for over 15 minutes.' : failing ? `Failed recently: ${ctx.n8n.last_error?.message ?? ''}` : 'n8n is online and this workflow has no recent failure.';
+    const reason = !ctx.n8nOnline ? 'The lead finders (n8n) have not checked in for over 15 minutes.' : failing ? `Failed recently: ${ctx.n8n.last_error?.message ?? ''}` : 'Online, with no recent failure.';
     return { ...w, status, reason };
   });
 
@@ -80,153 +127,70 @@ function SourcesBody() {
     <PageContainer>
       <PageHeader
         title="Sources"
-        subtitle="Where leads come from and whether each source is working."
+        subtitle="Where leads come from, and whether each place is working."
         actions={
-          <Button variant="secondary" leftIcon={<RefreshIcon className="h-4 w-4" />} onClick={() => void data.refresh()}>
+          <Button variant="primary" leftIcon={<RefreshIcon className="h-4 w-4" />} onClick={() => void data.refresh()}>
             Refresh
           </Button>
         }
       />
 
       {error && (
-        <Banner tone="danger" title="Could not load source health" className="mb-4" action={<Button size="sm" onClick={() => void data.refresh()}>Retry</Button>}>
+        <Banner tone="danger" title="Could not load the sources" className="mb-4" action={<Button size="sm" onClick={() => void data.refresh()}>Retry</Button>}>
           {error}
         </Banner>
       )}
 
       <div className="space-y-5">
-        {loading ? (
-          <Card title="Automation health">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-24" />
-              ))}
-            </div>
-          </Card>
-        ) : (
-          <AutomationCard data={data} />
-        )}
+        {!loading && <AutomationCard data={data} />}
 
-        <Card
-          title="Lead sources"
-          subtitle={data.capped ? 'Counts use your 2,000 most recent leads.' : `${data.leadCount} leads counted, newest first.`}
-          padding="none"
-          actions={<StatusRules />}
-        >
-          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3" role="group" aria-label="Filter by status">
+        <section aria-label="Where leads come from">
+          <div className="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label="Filter by status">
             {FILTERS.map((f) => (
               <Chip key={f} selected={filter === f} onClick={() => setFilter(f)} count={counts[f] ?? 0}>
                 {f === 'all' ? 'All' : STATUS_LABEL[f]}
               </Chip>
             ))}
+            <span className="ml-auto">
+              <StatusRules />
+            </span>
           </div>
-
           {loading ? (
-            <SkeletonRows rows={7} className="p-4" rowClassName="h-12" />
+            <SkeletonRows rows={6} rowClassName="h-24" />
           ) : shown.length === 0 ? (
-            <div className="p-4">
-              <EmptyState
-                icon={<SourcesIcon className="h-5 w-5" />}
-                title="No sources with this status"
-                text="Everything is in a different state. Show all sources to see the full list."
-                action={<Button onClick={() => setFilter('all')}>Show all sources</Button>}
-              />
-            </div>
+            <EmptyState icon={<SourcesIcon className="h-5 w-5" />} title="Nothing with this status" text="Everything is in a different state." action={<Button onClick={() => setFilter('all')}>Show all sources</Button>} />
           ) : (
-            <>
-              <div className="hidden md:block">
-                <Table caption="Lead sources and their health" className="rounded-none border-0">
-                  <THead>
-                    <tr>
-                      <Th>Source</Th>
-                      <Th>Kind</Th>
-                      <Th>Status</Th>
-                      <Th>Last lead</Th>
-                      <Th align="right">24 h</Th>
-                      <Th align="right">7 d</Th>
-                      <Th align="right">Avg trust</Th>
-                      <Th>Actions</Th>
-                    </tr>
-                  </THead>
-                  <tbody>
-                    {shown.map((r) => (
-                      <Tr key={r.def.id}>
-                        <Td>
-                          <Name row={r} />
-                        </Td>
-                        <Td className="whitespace-nowrap">
-                          <p className="text-fg">{KIND_LABEL[r.def.kind]}</p>
-                          <p className="text-xs text-fg-subtle">{r.def.schedule}</p>
-                        </Td>
-                        <Td>
-                          <StatusChip status={r.status} reason={r.reason} />
-                        </Td>
-                        <Td className="whitespace-nowrap text-fg-muted">{r.def.leadless ? '-' : ago(r.stats.last)}</Td>
-                        <Td numeric>{r.def.leadless ? '-' : r.stats.d1}</Td>
-                        <Td numeric>{r.def.leadless ? '-' : r.stats.d7}</Td>
-                        <Td numeric>{r.stats.trustAvg ?? '-'}</Td>
-                        <Td>
-                          <Actions row={r} workerOn={ctx.workerOnline} onDone={() => void data.refresh()} />
-                        </Td>
-                      </Tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-
-              <Stagger className="divide-y divide-border md:hidden" step={30}>
-                {shown.map((r) => (
-                  <div key={r.def.id} className="space-y-2.5 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <Name row={r} />
-                      <StatusChip status={r.status} reason={r.reason} />
-                    </div>
-                    <p className="text-xs text-fg-subtle">
-                      {KIND_LABEL[r.def.kind]} · {r.def.schedule}
-                    </p>
-                    {!r.def.leadless && (
-                      <dl className="grid grid-cols-4 gap-2 text-xs">
-                        {[
-                          ['Last lead', ago(r.stats.last)],
-                          ['24 h', String(r.stats.d1)],
-                          ['7 d', String(r.stats.d7)],
-                          ['Avg trust', r.stats.trustAvg != null ? String(r.stats.trustAvg) : '-'],
-                        ].map(([k, v]) => (
-                          <div key={k}>
-                            <dt className="text-fg-subtle">{k}</dt>
-                            <dd className="font-num mt-0.5 text-[13px] text-fg">{v}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    )}
-                    <Actions row={r} workerOn={ctx.workerOnline} onDone={() => void data.refresh()} />
-                  </div>
-                ))}
-              </Stagger>
-            </>
-          )}
-        </Card>
-
-        <Card title="n8n platform workflows" subtitle="The housekeeping workflows that keep the scrapers and alerts running." padding="none">
-          {loading ? (
-            <SkeletonRows rows={5} className="p-4" rowClassName="h-10" />
-          ) : (
-            <ul className="divide-y divide-border">
-              {platform.map((w) => (
-                <li key={w.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-fg">{w.name}</p>
-                    <p className="text-xs text-fg-subtle">{w.purpose}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge>{w.schedule}</Badge>
-                    <StatusChip status={w.status} reason={w.reason} />
-                  </div>
-                </li>
+            <Stagger as="ul" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" step={30}>
+              {shown.map((r) => (
+                <SourceCard key={r.def.id} row={r} ago={ago} workerOn={ctx.workerOnline} onDone={() => void data.refresh()} />
               ))}
-            </ul>
+            </Stagger>
           )}
-        </Card>
+          <p className="mt-2 px-1 text-xs text-fg-subtle">{data.capped ? 'Counts use your 5,000 newest leads.' : `${data.leadCount.toLocaleString()} leads counted.`}</p>
+        </section>
+
+        <Advanced id="sources-platform" title="Show details" hint="The housekeeping jobs behind the lead finders.">
+          <Card title="Lead finder housekeeping" subtitle="The jobs that keep the lead finders and alerts running." padding="none">
+            {loading ? (
+              <SkeletonRows rows={5} className="p-4" rowClassName="h-10" />
+            ) : (
+              <ul className="divide-y divide-border">
+                {platform.map((w) => (
+                  <li key={w.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-fg">{w.name}</p>
+                      <p className="text-xs text-fg-subtle">{w.purpose}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge>{w.schedule}</Badge>
+                      <StatusChip status={w.status} reason={w.reason} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </Advanced>
       </div>
     </PageContainer>
   );

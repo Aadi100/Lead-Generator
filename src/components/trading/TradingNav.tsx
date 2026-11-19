@@ -18,7 +18,7 @@ const LINKS = [
 export default function TradingNav() {
   const path = usePathname() ?? '';
   return (
-    <nav aria-label="Game Trading pages" className="-mx-1 mb-4 flex gap-1 overflow-x-auto px-1 pb-1 lg:hidden">
+    <nav aria-label="Game trading pages" className="-mx-1 mb-4 flex gap-1 overflow-x-auto px-1 pb-1 lg:hidden">
       {LINKS.map((l) => {
         const on = path === l.href;
         return (

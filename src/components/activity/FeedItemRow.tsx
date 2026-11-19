@@ -8,11 +8,11 @@ import { ChevronRightIcon, DealsIcon, InboxIcon, LeadsIcon, SendIcon, TasksIcon 
 import { cx } from '../ui';
 
 const KIND: Record<FeedKind, { icon: ReactNode; tone: string; label: string }> = {
-  lead: { icon: <LeadsIcon className="h-4 w-4" aria-hidden="true" />, tone: 'bg-info-soft text-info', label: 'New lead' },
+  lead: { icon: <LeadsIcon className="h-4 w-4" aria-hidden="true" />, tone: 'bg-info-soft text-info', label: 'New lead found' },
   sent: { icon: <SendIcon className="h-4 w-4" aria-hidden="true" />, tone: 'bg-primary-soft text-primary-text', label: 'Message sent' },
-  reply: { icon: <InboxIcon className="h-4 w-4" aria-hidden="true" />, tone: 'bg-success-soft text-success', label: 'Reply' },
-  deal: { icon: <DealsIcon className="h-4 w-4" aria-hidden="true" />, tone: 'bg-warning-soft text-warning', label: 'Deal' },
-  task: { icon: <TasksIcon className="h-4 w-4" aria-hidden="true" />, tone: 'bg-surface-2 text-fg-muted', label: 'Task' },
+  reply: { icon: <InboxIcon className="h-4 w-4" aria-hidden="true" />, tone: 'bg-success-soft text-success', label: 'Someone replied' },
+  deal: { icon: <DealsIcon className="h-4 w-4" aria-hidden="true" />, tone: 'bg-warning-soft text-warning', label: 'Deal update' },
+  task: { icon: <TasksIcon className="h-4 w-4" aria-hidden="true" />, tone: 'bg-surface-2 text-fg-muted', label: 'Task done' },
 };
 
 export function kindMeta(k: FeedKind) {
@@ -34,7 +34,10 @@ export default function FeedItemRow({ item, fresh }: { item: FeedItem; fresh?: b
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-fg">{item.title}</span>
-          {item.detail && <span className="block truncate text-[13px] text-fg-subtle">{item.detail}</span>}
+          <span className="block truncate text-[13px] text-fg-subtle">
+            <span className="font-medium text-fg-muted">{meta.label}</span>
+            {item.detail ? ` · ${item.detail}` : ''}
+          </span>
         </span>
         <time dateTime={item.at} title={fmtDateTime(item.at)} className="font-num shrink-0 text-xs text-fg-subtle">
           {time}

@@ -10,7 +10,7 @@ export type PriceKind = (typeof PRICE_KINDS)[number];
 export const PRICE_KIND_LABEL: Record<PriceKind, string> = { sold: 'Sold', asking: 'Asking', offer: 'Buyer offer' };
 
 export const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'BRL', 'TRY', 'PHP', 'INR', 'IDR', 'RUB', 'PLN'];
-export const PLATFORMS = ['Discord', 'Reddit', 'Eldorado', 'G2G', 'PlayerAuctions', 'U7Buy', 'Z2U', 'Facebook', 'Telegram', 'Direct'];
+export const PLATFORMS = ['Reddit', 'Eldorado', 'G2G', 'PlayerAuctions', 'U7Buy', 'Z2U', 'Facebook', 'Direct'];
 
 export type StockItem = {
   id: string;

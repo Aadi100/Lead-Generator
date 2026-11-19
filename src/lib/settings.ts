@@ -13,7 +13,7 @@ import type {
 
 type Raw = Record<string, unknown>;
 
-const INTEGRATION_NAMES: IntegrationName[] = ['serper', 'x', 'reddit_api', 'discord', 'upwork_inbox', 'producthunt', 'indiehackers', 'linkedin', 'fiverr', 'places'];
+const INTEGRATION_NAMES: IntegrationName[] = ['serper', 'x', 'reddit_api', 'upwork_inbox', 'producthunt', 'indiehackers', 'linkedin', 'fiverr', 'places'];
 
 const obj = (v: unknown): Raw => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Raw) : {});
 const s = (v: unknown, d = ''): string => (typeof v === 'string' ? v : d);
@@ -159,33 +159,24 @@ const SANITIZERS: { [K in keyof SettingsMap]: (r: Raw) => SettingsMap[K] } = {
   }),
   imap_state: (r) => ({ last_checked: sn(r.last_checked), last_error: sn(r.last_error) }),
   alerts: (r) => {
-    const tg = obj(r.telegram);
     const em = obj(r.email);
     const wa = obj(r.whatsapp);
-    const dc = obj(r.discord);
     return {
       enabled: b(r.enabled, false),
       min_trust: n(r.min_trust, 70),
       only_non_suspicious: b(r.only_non_suspicious, true),
       on_reply: b(r.on_reply, true),
-      telegram: { bot_token: s(tg.bot_token), chat_id: s(tg.chat_id) },
       email: { to: s(em.to) },
       whatsapp: { phone: s(wa.phone), apikey: s(wa.apikey) },
-      discord: { webhook_url: s(dc.webhook_url) },
     };
   },
   trading: (r) => {
-    const dc = obj(r.discord);
     return {
       enabled: b(r.enabled, false),
       i_sell: tradeEntries(r.i_sell),
       i_want: tradeEntries(r.i_want),
       games: list(r.games),
       extra_subreddits: list(r.extra_subreddits),
-      discord: {
-        enabled: b(dc.enabled, false),
-        channels: Array.isArray(dc.channels) ? dc.channels.map((c) => ({ id: s(obj(c).id), label: s(obj(c).label) })) : [],
-      },
       suggestions: tradingSuggestions(r.suggestions),
       last_run: sn(r.last_run),
       last_result: typeof r.last_result === 'string' ? r.last_result : r.last_result && typeof r.last_result === 'object' ? (r.last_result as Raw) : null,
@@ -214,9 +205,7 @@ const SANITIZERS: { [K in keyof SettingsMap]: (r: Raw) => SettingsMap[K] } = {
   }),
   trade_state: (r) => {
     const reddit = obj(r.reddit);
-    const dc: Record<string, string> = {};
-    for (const [k, v] of Object.entries(obj(r.discord))) if (typeof v === 'string') dc[k] = v;
-    return { discord: dc, reddit_last_run: sn(reddit.last_run), subs_ok: list(r.subs_ok) };
+    return { reddit_last_run: sn(reddit.last_run), subs_ok: list(r.subs_ok) };
   },
   integrations: (r) => {
     const sp = obj(r.serper);
@@ -227,7 +216,6 @@ const SANITIZERS: { [K in keyof SettingsMap]: (r: Raw) => SettingsMap[K] } = {
       producthunt: { enabled: b(obj(r.producthunt).enabled, true), token: s(obj(r.producthunt).token) },
       x: { enabled: b(x.enabled, false), bearer_token: s(x.bearer_token) },
       reddit_api: { enabled: b(rd.enabled, false), client_id: s(rd.client_id), client_secret: s(rd.client_secret), username: s(rd.username) },
-      discord: { bot_token: s(obj(r.discord).bot_token) },
       upwork_inbox: { enabled: b(obj(r.upwork_inbox).enabled, false) },
       status: integrationStatus(r.status),
     };

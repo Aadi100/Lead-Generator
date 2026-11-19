@@ -8,7 +8,8 @@ import { Badge, Banner, Button, Card, CountUp, EmptyState, Reveal, Select, Segme
 import { DealsIcon, ListIcon, GridIcon, PlusIcon } from '@/components/Icons';
 import { fmtDateTime, timeAgo } from '@/lib/format';
 import { DEAL_STAGES, DEAL_STAGE_LABEL, type Deal, type DealKind, type DealStage } from '@/lib/types-platform';
-import { computeKpis, dealsToCsv, downloadCsv, fetchDeals, fetchLeadById, inputFromLead, moveDeal, money, monthlySeries, profitOf, type DealInput } from '@/lib/deals-data';
+import { STAGE_HINT, computeKpis, dealsToCsv, downloadCsv, fetchDeals, fetchLeadById, inputFromLead, moveDeal, money, monthlySeries, profitOf, type DealInput } from '@/lib/deals-data';
+import ShowDetails from '@/components/ShowDetails';
 import DealDrawer from './DealDrawer';
 import DealsChart from './DealsChart';
 
@@ -16,14 +17,10 @@ const STAGE_TONE: Record<DealStage, Tone> = { talking: 'neutral', negotiating: '
 
 function StageBadge({ stage }: { stage: DealStage }) {
   return (
-    <Badge tone={STAGE_TONE[stage]} dot>
+    <Badge tone={STAGE_TONE[stage]} dot title={STAGE_HINT[stage]}>
       {DEAL_STAGE_LABEL[stage]}
     </Badge>
   );
-}
-
-function KindBadge({ d }: { d: Deal }) {
-  return <Badge tone={d.kind === 'trade' ? 'accent' : 'primary'}>{d.kind === 'trade' ? (d.direction === 'buy' ? 'Trade, buying' : 'Trade, selling') : 'Service'}</Badge>;
 }
 
 type DrawerState = { mode: 'new'; initial: DealInput | null } | { mode: 'edit'; id: string } | null;
@@ -155,10 +152,10 @@ export default function DealsView() {
     <PageContainer>
       <PageHeader
         title="Deals"
-        subtitle="Open and closed deals, with value, cost and stage."
+        subtitle="Follow work you have agreed with clients, from first chat to paid."
         actions={
           <>
-            <Button onClick={exportCsv} disabled={!visible.length}>
+            <Button variant="ghost" onClick={exportCsv} disabled={!visible.length}>
               Export CSV
             </Button>
             <Button variant="primary" leftIcon={<PlusIcon className="h-4 w-4" />} onClick={openNew}>
@@ -175,29 +172,31 @@ export default function DealsView() {
       )}
 
       {loading ? (
-        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6" aria-busy="true">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3" aria-busy="true">
+          {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-[98px] rounded-card" />
           ))}
         </div>
       ) : (
-        <Stagger className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6" step={50}>
-          <StatTile label="Open value" tone="primary" value={<CountUp value={kpis.openValue} format={fmt} />} sub={`${kpis.openCount} open deal${kpis.openCount === 1 ? '' : 's'}`} />
-          <StatTile label="Won this month" tone="success" value={<CountUp value={kpis.wonThisMonth} format={(n) => String(Math.round(n))} />} sub={money(kpis.wonThisMonthValue, currency, true)} />
-          <StatTile label="Revenue" value={<CountUp value={kpis.revenue} format={fmt} />} sub={`${kpis.doneCount} finished deal${kpis.doneCount === 1 ? '' : 's'}`} />
-          <StatTile label="Profit" tone={kpis.profit < 0 ? 'danger' : 'success'} value={<CountUp value={kpis.profit} format={fmt} />} sub="Value minus cost" />
-          <StatTile label="Win rate" value={kpis.winRate === null ? <span>None yet</span> : <CountUp value={kpis.winRate} format={(n) => `${Math.round(n)}%`} />} sub="Done vs cancelled" />
-          <StatTile label="Average deal" value={<CountUp value={kpis.average} format={fmt} />} sub="Per finished deal" />
+        <Stagger className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3" step={50}>
+          <StatTile label="Still open" tone="primary" value={<CountUp value={kpis.openValue} format={fmt} />} sub={`${kpis.openCount} deal${kpis.openCount === 1 ? '' : 's'} in progress`} />
+          <StatTile label="Won this month" tone="success" value={<CountUp value={kpis.wonThisMonth} format={(n) => String(Math.round(n))} />} sub={`${money(kpis.wonThisMonthValue, currency, true)} in value`} />
+          <StatTile label="Profit so far" tone={kpis.profit < 0 ? 'danger' : 'success'} value={<CountUp value={kpis.profit} format={fmt} />} sub="Finished deals, value minus cost" />
         </Stagger>
       )}
-      {mixed && !loading && <p className="-mt-3 mb-4 text-xs text-fg-subtle">Deals use more than one currency. Totals add the numbers together and show {currency}.</p>}
+      {mixed && !loading && <p className="mb-3 text-xs text-fg-subtle">Deals use more than one currency. Totals add the numbers together and show {currency}.</p>}
 
-      {!loading && view === 'table' && (
-        <Reveal>
-          <Card title="Revenue and profit by month" subtitle="Finished deals over the last 6 months" className="mb-5">
+      {!loading && (
+        <ShowDetails id="deals-totals" title="Show more totals and the monthly chart" className="!mt-0 mb-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatTile label="Revenue" value={<CountUp value={kpis.revenue} format={fmt} />} sub={`${kpis.doneCount} finished deal${kpis.doneCount === 1 ? '' : 's'}`} />
+            <StatTile label="How often you close" value={kpis.winRate === null ? <span>None yet</span> : <CountUp value={kpis.winRate} format={(n) => `${Math.round(n)}%`} />} sub="Finished vs cancelled" />
+            <StatTile label="Average deal" value={<CountUp value={kpis.average} format={fmt} />} sub="Per finished deal" />
+          </div>
+          <Card title="Revenue and profit by month" subtitle="Money from finished deals over the last 6 months.">
             <DealsChart data={series} currency={currency} />
           </Card>
-        </Reveal>
+        </ShowDetails>
       )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -212,7 +211,7 @@ export default function DealsView() {
         />
         <div className="w-44">
           <Select aria-label="Filter by kind" value={kind} onChange={(e) => setParams({ kind: e.target.value === 'all' ? null : e.target.value })}>
-            <option value="all">All kinds</option>
+            <option value="all">All deals</option>
             <option value="service">Services</option>
             <option value="trade">Game trades</option>
           </Select>
@@ -242,13 +241,10 @@ export default function DealsView() {
               <THead>
                 <tr>
                   <Th>Deal</Th>
-                  <Th>Kind</Th>
                   <Th>Stage</Th>
                   <Th align="right">Value</Th>
-                  <Th align="right">Cost</Th>
                   <Th align="right">Profit</Th>
-                  <Th>Expected close</Th>
-                  <Th>Updated</Th>
+                  <Th>Expected finish</Th>
                 </tr>
               </THead>
               <tbody>
@@ -265,23 +261,16 @@ export default function DealsView() {
                       >
                         {d.title}
                       </button>
-                      <p className="truncate text-xs text-fg-subtle">{[d.company, d.contact].filter(Boolean).join(' / ') || ' '}</p>
-                    </Td>
-                    <Td>
-                      <KindBadge d={d} />
+                      <p className="truncate text-xs text-fg-subtle">{[d.kind === 'trade' ? 'Game trade' : 'Service', d.company, d.contact].filter(Boolean).join(' / ')}</p>
                     </Td>
                     <Td>
                       <StageBadge stage={d.stage} />
                     </Td>
                     <Td numeric>{d.value === null ? <span className="text-fg-subtle">-</span> : money(d.value, d.currency)}</Td>
-                    <Td numeric>{d.cost === null ? <span className="text-fg-subtle">-</span> : money(d.cost, d.currency)}</Td>
                     <Td numeric className={d.value === null && d.cost === null ? '' : profitOf(d) < 0 ? 'text-danger' : 'text-success'}>
                       {d.value === null && d.cost === null ? <span className="text-fg-subtle">-</span> : money(profitOf(d), d.currency)}
                     </Td>
                     <Td className="whitespace-nowrap text-fg-muted">{d.expected_close ? new Date(`${d.expected_close}T00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : <span className="text-fg-subtle">Not set</span>}</Td>
-                    <Td className="whitespace-nowrap text-fg-muted" >
-                      <span title={fmtDateTime(d.updated_at)}>{timeAgo(d.updated_at)}</span>
-                    </Td>
                   </Tr>
                 ))}
               </tbody>
@@ -298,7 +287,6 @@ export default function DealsView() {
                   <p className="mt-0.5 truncate text-xs text-fg-subtle">{[d.company, d.contact].filter(Boolean).join(' / ')}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <StageBadge stage={d.stage} />
-                    <KindBadge d={d} />
                     {(d.value !== null || d.cost !== null) && <span className={cx('font-num text-xs', profitOf(d) < 0 ? 'text-danger' : 'text-success')}>Profit {money(profitOf(d), d.currency)}</span>}
                   </div>
                 </button>
@@ -333,7 +321,10 @@ export default function DealsView() {
                   className={cx('w-[272px] shrink-0 snap-start rounded-card border bg-surface-2/60 p-2 transition-colors duration-fast', over ? 'border-primary bg-primary-soft' : 'border-border')}
                 >
                   <header className="mb-2 flex items-center justify-between gap-2 px-1">
-                    <h3 className="text-sm font-semibold text-fg">{DEAL_STAGE_LABEL[stage]}</h3>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-fg">{DEAL_STAGE_LABEL[stage]}</h3>
+                      <p className="truncate text-xs text-fg-subtle" title={STAGE_HINT[stage]}>{STAGE_HINT[stage]}</p>
+                    </div>
                     <span className="font-num text-xs text-fg-subtle">
                       {col.length}
                       {total > 0 && <> / {money(total, currency, true)}</>}
@@ -359,7 +350,7 @@ export default function DealsView() {
                           <p className="line-clamp-2 text-sm font-medium text-fg">{d.title}</p>
                           {(d.company || d.contact) && <p className="mt-0.5 truncate text-xs text-fg-subtle">{[d.company, d.contact].filter(Boolean).join(' / ')}</p>}
                           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                            <KindBadge d={d} />
+                            {d.kind === 'trade' && <span className="text-xs text-fg-subtle">Game trade</span>}
                             {d.value !== null && <span className="font-num text-xs text-fg">{money(d.value, d.currency)}</span>}
                           </div>
                         </button>

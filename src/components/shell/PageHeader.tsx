@@ -10,7 +10,10 @@ export function PageContainer({ children, width = 'wide', className }: { childre
   );
 }
 
-/** The one h1 of a page. Put primary actions in `actions` (they wrap under the title on phones). */
+/**
+ * The one h1 of a page. Wording rule: title = the page name in sentence case; subtitle = ONE plain sentence (no jargon, see the glossary in
+ * .dev-tools/UX-BRIEF.md) saying what the page is for or what needs you. Put ONE primary action in `actions`, the rest as ghost/secondary.
+ */
 export function PageHeader({
   title,
   subtitle,
@@ -45,8 +48,8 @@ export function PageHeader({
             </ol>
           </nav>
         )}
-        <h1 className="text-xl font-semibold text-fg">{title}</h1>
-        {subtitle && <p className="mt-0.5 max-w-2xl text-sm text-fg-muted">{subtitle}</p>}
+        <h1 className="text-xl font-semibold text-fg sm:text-2xl">{title}</h1>
+        {subtitle && <p className="mt-1 max-w-2xl text-sm text-fg-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>

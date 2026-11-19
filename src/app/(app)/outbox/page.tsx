@@ -19,11 +19,11 @@ import { ConfirmCancelModal, CreateTaskModal } from '@/components/outbox/OutboxD
 import DailyLimitMeter from '@/components/outbox/DailyLimitMeter';
 
 const EMPTY: Record<OutboxTab, { title: string; text: string }> = {
-  review: { title: 'Nothing to review', text: 'When a pitch is written it shows up here. Press "Write pitch" on a lead, or let the worker draft them for your best leads.' },
-  queue: { title: 'Nothing waiting', text: 'Emails you send and follow-ups that are scheduled appear here until they go out.' },
+  review: { title: 'Nothing to review', text: 'When a message is written for a lead it shows up here for you to check. Open a lead and press Write pitch, or let the background helper draft them for your best leads.' },
+  queue: { title: 'Nothing waiting', text: 'Emails you have approved, and follow-ups planned for later, wait here until they go out.' },
   sent: { title: 'Nothing sent yet', text: 'Sent emails and messages you marked as sent are listed here.' },
-  replies: { title: 'No replies yet', text: 'When someone answers an email, it appears here and the lead moves to Replied. This needs Reply tracking turned on in Settings.' },
-  problems: { title: 'No problems', text: 'Emails that failed to send or were held back for a safety check show up here with the reason.' },
+  replies: { title: 'No replies yet', text: 'When someone answers an email it appears here and the lead moves to Replied. To see replies, connect your inbox in Settings.' },
+  problems: { title: 'No problems', text: 'If an email fails or is held back for a safety check, it shows up here with the reason and what to do.' },
 };
 
 function useIsDesktop() {
@@ -228,19 +228,19 @@ function OutboxView() {
     <PageContainer>
       <PageHeader
         title="Outbox"
-        subtitle="Read your pitches, send them with one click, and see who replied."
+        subtitle="Check your messages, send them when you are happy, and see who replied."
         actions={<DailyLimitMeter sent={sentToday} limit={sending.daily_limit} paused={sending.paused} />}
       />
 
       <div className="mb-4 grid gap-2 empty:hidden">
         {sending.paused && (
           <Banner tone="warning" title="Sending is paused" action={<span className="inline-flex items-center gap-1 text-xs font-medium text-fg-muted"><PauseIcon className="h-3.5 w-3.5" aria-hidden="true" />Resume from the top bar</span>}>
-            Nothing will go out until you resume. Emails you send now wait in the queue.
+            Nothing goes out until you resume. Emails you send now wait in line.
           </Banner>
         )}
         {!workerOnline && (
-          <Banner tone="warning" title="The worker is off">
-            Emails you send will wait in the queue until you run <span className="font-mono text-xs">npm run worker</span> in the project folder.
+          <Banner tone="warning" title="The background helper is offline">
+            Emails you send will wait in line until the helper is running. Start it (<span className="font-mono text-xs">npm run worker</span> in the project folder) and they go out.
           </Banner>
         )}
         {loadError && (
@@ -283,7 +283,7 @@ function OutboxView() {
           text={EMPTY[tab].text}
           action={tab === 'review' || tab === 'replies' ? (
             <Button variant="secondary" onClick={() => router.push(tab === 'review' ? '/leads' : '/settings')}>
-              {tab === 'review' ? 'Find a lead to pitch' : 'Open settings'}
+              {tab === 'review' ? 'Find a lead to write to' : 'Connect your inbox'}
             </Button>
           ) : undefined}
         />

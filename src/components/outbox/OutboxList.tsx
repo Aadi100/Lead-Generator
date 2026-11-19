@@ -1,11 +1,9 @@
 "use client";
 
 import type { OutreachWithLead, ReplyWithLead } from '@/lib/outreach';
-import { OUTREACH_STATUS_LABEL, stepLabel } from '@/lib/outreach';
 import { REPLY_CATEGORY, replyDisplayName } from '@/lib/outbox-model';
 import { ASSIST_CATEGORY } from '@/lib/reply-assist';
 import { fmtDateTime, timeAgo, timeUntil, truncate } from '@/lib/format';
-import { AlertIcon } from '../Icons';
 import { Badge, cx } from '../ui';
 
 const ROW_BASE =
@@ -20,7 +18,6 @@ function rowClass(selected: boolean, emphasis = false) {
 
 export function OutreachListItem({
   row,
-  days,
   now,
   selected,
   onSelect,
@@ -33,15 +30,18 @@ export function OutreachListItem({
 }) {
   const holds = row.warnings.filter((w) => w.level !== 'warn').length;
   let status: { label: string; tone: 'info' | 'primary' | 'success' | 'danger' | 'warning' | 'neutral' } | null = null;
-  if (row.status === 'sending') status = { label: 'Sending', tone: 'info' };
-  else if (row.status === 'queued') status = { label: OUTREACH_STATUS_LABEL.queued, tone: 'primary' };
-  else if (row.status === 'scheduled') status = { label: row.due_at ? `Scheduled ${timeUntil(row.due_at, now)}` : 'Scheduled', tone: 'primary' };
+  if (row.status === 'sending') status = { label: 'Sending now', tone: 'info' };
+  else if (row.status === 'queued') status = { label: 'Waiting to send', tone: 'primary' };
+  else if (row.status === 'scheduled') status = { label: row.due_at ? `Goes out ${timeUntil(row.due_at, now)}` : 'Scheduled', tone: 'primary' };
   else if (row.status === 'replied') status = { label: 'They replied', tone: 'success' };
   else if (row.status === 'sent') status = { label: 'Sent', tone: 'neutral' };
-  else if (row.status === 'failed') status = { label: 'Failed', tone: 'danger' };
+  else if (row.status === 'failed') status = { label: 'Did not send', tone: 'danger' };
   else if (row.status === 'draft' && row.error) status = { label: 'Held back', tone: 'warning' };
+  else if (row.status === 'draft' && holds > 0) status = { label: 'Needs a look', tone: 'warning' };
+  else if (row.status === 'draft') status = { label: row.channel === 'manual' ? 'Ready to copy' : 'Ready to review', tone: 'info' };
   const when = row.sent_at ?? row.updated_at;
   const showTime = row.status === 'sent' || row.status === 'replied';
+  const preview = row.subject ? truncate(row.subject, 100) : row.body ? truncate(row.body, 100) : '';
 
   return (
     <button type="button" onClick={() => onSelect(row.id)} aria-current={selected ? 'true' : undefined} className={rowClass(selected)}>
@@ -53,17 +53,10 @@ export function OutreachListItem({
           </span>
         )}
       </span>
-      <span className="mt-1 flex flex-wrap items-center gap-1.5">
-        {status && <Badge tone={status.tone}>{status.label}</Badge>}
-        <Badge>{stepLabel(row.step, days, row.channel)}</Badge>
-        {row.channel === 'manual' && <Badge>Paste yourself</Badge>}
-      </span>
-      {row.subject && <span className="mt-1.5 block truncate text-[13px] font-medium text-fg-muted">{truncate(row.subject, 100)}</span>}
-      {row.body && <span className="mt-0.5 line-clamp-1 block break-words text-[13px] text-fg-subtle">{row.body}</span>}
-      {holds > 0 && row.status === 'draft' && (
-        <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-warning">
-          <AlertIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          {holds} {holds === 1 ? 'thing needs' : 'things need'} a look
+      {preview && <span className="mt-1 line-clamp-2 block break-words text-sm text-fg-muted">{preview}</span>}
+      {status && (
+        <span className="mt-2 flex">
+          <Badge tone={status.tone}>{status.label}</Badge>
         </span>
       )}
       {row.error && row.status !== 'draft' && <span className="mt-1.5 line-clamp-1 block text-xs text-danger">{row.error}</span>}
@@ -73,6 +66,7 @@ export function OutreachListItem({
 
 export function ReplyListItem({ reply, now, selected, onSelect }: { reply: ReplyWithLead; now: number; selected: boolean; onSelect: (id: string) => void }) {
   const cat = REPLY_CATEGORY[reply.category];
+  const chip = reply.assist && reply.assist.classification !== 'out_of_office' ? ASSIST_CATEGORY[reply.assist.classification] : cat;
   const when = reply.received_at ?? reply.created_at;
   return (
     <button type="button" onClick={() => onSelect(reply.id)} aria-current={selected ? 'true' : undefined} className={rowClass(selected, !reply.handled)}>
@@ -85,15 +79,9 @@ export function ReplyListItem({ reply, now, selected, onSelect }: { reply: Reply
           {timeAgo(when, now)}
         </span>
       </span>
-      <span className="mt-1 flex flex-wrap items-center gap-1.5">
-        <Badge tone={cat.tone}>{cat.label}</Badge>
-        {reply.assist && reply.assist.classification !== 'out_of_office' && (
-          <Badge tone={ASSIST_CATEGORY[reply.assist.classification].tone} title="What the reply assistant thinks they want">
-            {ASSIST_CATEGORY[reply.assist.classification].label}
-          </Badge>
-        )}
-        {reply.assist?.draft_outreach_id && <Badge tone="primary">Draft ready</Badge>}
-        {reply.handled && <Badge>Handled</Badge>}
+      <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <Badge tone={chip.tone}>{chip.label}</Badge>
+        {reply.assist?.draft_outreach_id && !reply.handled && <Badge tone="primary">Reply drafted</Badge>}
       </span>
       <span className="mt-1 block truncate text-[13px] text-fg-subtle">{replyDisplayName(reply)}</span>
       {reply.summary && <span className="line-clamp-2 mt-0.5 block break-words text-[13px] text-fg-muted">{reply.summary}</span>}

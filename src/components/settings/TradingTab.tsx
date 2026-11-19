@@ -9,7 +9,7 @@ import { useShell } from '../AppShell';
 import { PlusIcon, XIcon } from '../Icons';
 import { Card, Field, JobNote, Notice, SaveBar, Spinner, TagInput, Toggle, btnPrimary, btnSecondary, inputCls, pill } from '../ui';
 
-const OWNED: (keyof TradingSettings)[] = ['enabled', 'i_sell', 'i_want', 'games', 'extra_subreddits', 'discord', 'updated_at'];
+const OWNED: (keyof TradingSettings)[] = ['enabled', 'i_sell', 'i_want', 'games', 'extra_subreddits', 'updated_at'];
 const MAX_ENTRIES = 30;
 
 const COMMON_GAMES = [
@@ -199,14 +199,12 @@ export default function TradingTab() {
   const suggest = useJob();
   const [market, setMarket] = useState<TradeMarket | null>(null);
   const [state, setState] = useState<TradeState | null>(null);
-  const [botSaved, setBotSaved] = useState<boolean | null>(null);
   const t = form.draft;
 
   const loadExtras = useCallback(async () => {
-    const { values } = await loadSettings(['trade_market', 'trade_state', 'integrations']);
+    const { values } = await loadSettings(['trade_market', 'trade_state']);
     setMarket(values.trade_market);
     setState(values.trade_state);
-    setBotSaved(values.integrations.discord.bot_token.trim() !== '');
   }, []);
 
   useEffect(() => {
@@ -217,7 +215,6 @@ export default function TradingTab() {
     const clean = {
       i_sell: t.i_sell.filter((e) => e.label.trim() || e.game.trim()),
       i_want: t.i_want.filter((e) => e.label.trim() || e.game.trim()),
-      discord: { ...t.discord, channels: t.discord.channels.filter((c) => c.id.trim()).map((c) => ({ id: c.id.trim(), label: c.label.trim() || c.id.trim() })) },
       updated_at: new Date().toISOString(),
     };
     const err = await form.save(clean);
@@ -254,7 +251,6 @@ export default function TradingTab() {
     });
   };
 
-  const setChannels = (channels: { id: string; label: string }[]) => form.patch({ discord: { ...t.discord, channels } });
   const suggestions = form.saved.suggestions;
   const lastResult = form.saved.last_result;
   const lastText =
@@ -285,7 +281,7 @@ export default function TradingTab() {
               checked={t.enabled}
               onChange={(v) => form.patch({ enabled: v })}
               label="Look for game trading leads"
-              description="Checks public Reddit trading communities every 20 minutes, and your Discord channels if you add them below."
+              description="Checks public Reddit trading communities every 20 minutes."
             />
 
             <Notice tone="info">
@@ -320,65 +316,6 @@ export default function TradingTab() {
                 placeholder="RocketLeagueExchange"
               />
             </Field>
-
-            <div className="rounded-lg border border-border p-3">
-              <Toggle
-                id="tr-dc"
-                checked={t.discord.enabled}
-                onChange={(v) => form.patch({ discord: { ...t.discord, enabled: v } })}
-                label="Read Discord trading channels"
-                description="Uses a Discord bot that you add to a server yourself. It only reads channels it has been given access to."
-              />
-              {t.discord.enabled && (
-                <div className="mt-3 space-y-3">
-                  {botSaved === false && (
-                    <Notice tone="warn">
-                      No Discord bot token yet. Add it in Settings, in the Connections tab, then come back here.
-                    </Notice>
-                  )}
-                  {t.discord.channels.length === 0 && <p className="text-sm text-fg-subtle">No channels yet. Add one below.</p>}
-                  {t.discord.channels.map((c, i) => (
-                    <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                      <input
-                        aria-label={`Channel ID ${i + 1}`}
-                        className={inputCls}
-                        value={c.id}
-                        inputMode="numeric"
-                        onChange={(e) => setChannels(t.discord.channels.map((x, idx) => (idx === i ? { ...x, id: e.target.value.replace(/\D/g, '') } : x)))}
-                        placeholder="Channel ID, like 123456789012345678"
-                      />
-                      <input
-                        aria-label={`Channel name ${i + 1}`}
-                        className={inputCls}
-                        value={c.label}
-                        onChange={(e) => setChannels(t.discord.channels.map((x, idx) => (idx === i ? { ...x, label: e.target.value } : x)))}
-                        placeholder="Name you will recognise, like OG Fortnite WTB"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setChannels(t.discord.channels.filter((_, idx) => idx !== i))}
-                        aria-label={`Remove channel ${i + 1}`}
-                        className={`${btnSecondary} px-2`}
-                      >
-                        <XIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => setChannels([...t.discord.channels, { id: '', label: '' }])} className={btnSecondary}>
-                    <PlusIcon className="h-4 w-4" />
-                    Add a channel
-                  </button>
-                  <ol className="list-decimal space-y-1 pl-5 text-xs text-fg-subtle">
-                    <li>In Discord, open User Settings, then Advanced, and turn on Developer Mode.</li>
-                    <li>Right-click the channel and choose Copy Channel ID. Paste it above.</li>
-                    <li>
-                      The bot must be in that server with View Channel and Read Message History, and Message Content Intent must be on in the bot&apos;s
-                      page on the Discord developer portal. Only add the bot to servers where you are allowed to.
-                    </li>
-                  </ol>
-                </div>
-              )}
-            </div>
           </div>
         )}
         <SaveBar dirty={form.dirty} saving={form.saving} onSave={() => void save()} onReset={form.reset} error={form.error} />
@@ -440,7 +377,7 @@ export default function TradingTab() {
           <>
             <MarketTable market={market} />
             <p className="mt-2 text-xs text-fg-subtle">
-              This only counts posts I could read on public Reddit and your Discord channels, so treat it as a hint, not the whole market.
+              This only counts posts I could read on public Reddit, so treat it as a hint, not the whole market.
             </p>
           </>
         ) : (

@@ -1,122 +1,125 @@
 {
- "id": "digest01",
- "name": "Daily summary",
- "nodes": [
-  {
-   "parameters": {
-    "rule": {
-     "interval": [
-      {
-       "field": "cronExpression",
-       "expression": "0 8 * * *"
-      }
-     ]
+  "id": "digest01",
+  "name": "Daily summary",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node65",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n (SELECT value FROM app_settings WHERE key = 'alerts') AS alerts,\n (SELECT count(*) FROM leads WHERE created_at > now() - interval '24 hours' AND lead_kind <> 'trade')::int AS new_leads,\n (SELECT count(*) FROM leads WHERE status = 'New' AND coalesce(fit_score, 0) >= 70 AND lead_kind <> 'trade')::int AS strong,\n (SELECT count(*) FROM leads WHERE lead_kind = 'trade' AND status = 'New' AND trade_match IS NOT NULL)::int AS trade_matches,\n (SELECT count(*) FROM outreach WHERE status = 'draft')::int AS drafts,\n (SELECT count(*) FROM replies WHERE handled = false)::int AS replies,\n (SELECT count(*) FROM tasks WHERE done = false AND due_at <= now() + interval '1 day')::int AS tasks_due,\n (SELECT count(*) FROM deals WHERE stage NOT IN ('done', 'cancelled'))::int AS open_deals,\n (SELECT coalesce(json_agg(t), '[]'::json) FROM (SELECT title, source, fit_score FROM leads WHERE status = 'New' AND lead_kind <> 'trade' ORDER BY coalesce(fit_score, 0) DESC, created_at DESC LIMIT 3) t) AS top",
+        "options": {}
+      },
+      "id": "node66",
+      "name": "Count what needs attention",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        470,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-cred",
+          "name": "Supabase Leads DB"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json || {};\nconst al = d.alerts || {};\nconst hasChannel = !!((al.email && al.email.to) || (al.whatsapp && al.whatsapp.phone && al.whatsapp.apikey));\nif (!hasChannel || !(al.enabled === true)) return [];\nconst top = (d.top || []).map((l) => '- ' + l.title + ' (' + l.source + (l.fit_score != null ? ', fit ' + l.fit_score : '') + ')').join('\n');\nconst lines = [\n  'New leads in 24 h: ' + d.new_leads + ' | Strong matches waiting: ' + d.strong + ' | Trade matches: ' + d.trade_matches,\n  'Drafts to review: ' + d.drafts + ' | Replies waiting: ' + d.replies + ' | Tasks due: ' + d.tasks_due + ' | Open deals: ' + d.open_deals,\n];\nif (top) lines.push('Best new leads:', top);\nlines.push('http://localhost:3000');\nreturn [{ json: { payload: { subject: 'Lead Radar daily summary', text: lines.join('\n') } } }];"
+      },
+      "id": "node67",
+      "name": "Write the summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO jobs (type, payload) VALUES ('send_alert', $1::jsonb) RETURNING id",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json.payload) }}"
+        }
+      },
+      "id": "node68",
+      "name": "Queue the alert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        930,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-cred",
+          "name": "Supabase Leads DB"
+        }
+      },
+      "onError": "continueRegularOutput"
     }
-   },
-   "id": "node65",
-   "name": "Schedule",
-   "type": "n8n-nodes-base.scheduleTrigger",
-   "typeVersion": 1.2,
-   "position": [
-    240,
-    300
-   ]
-  },
-  {
-   "parameters": {
-    "operation": "executeQuery",
-    "query": "SELECT\n (SELECT value FROM app_settings WHERE key = 'alerts') AS alerts,\n (SELECT count(*) FROM leads WHERE created_at > now() - interval '24 hours' AND lead_kind <> 'trade')::int AS new_leads,\n (SELECT count(*) FROM leads WHERE status = 'New' AND coalesce(fit_score, 0) >= 70 AND lead_kind <> 'trade')::int AS strong,\n (SELECT count(*) FROM leads WHERE lead_kind = 'trade' AND status = 'New' AND trade_match IS NOT NULL)::int AS trade_matches,\n (SELECT count(*) FROM outreach WHERE status = 'draft')::int AS drafts,\n (SELECT count(*) FROM replies WHERE handled = false)::int AS replies,\n (SELECT count(*) FROM tasks WHERE done = false AND due_at <= now() + interval '1 day')::int AS tasks_due,\n (SELECT count(*) FROM deals WHERE stage NOT IN ('done', 'cancelled'))::int AS open_deals,\n (SELECT coalesce(json_agg(t), '[]'::json) FROM (SELECT title, source, fit_score FROM leads WHERE status = 'New' AND lead_kind <> 'trade' ORDER BY coalesce(fit_score, 0) DESC, created_at DESC LIMIT 3) t) AS top",
-    "options": {}
-   },
-   "id": "node66",
-   "name": "Count what needs attention",
-   "type": "n8n-nodes-base.postgres",
-   "typeVersion": 2.5,
-   "position": [
-    470,
-    300
-   ],
-   "credentials": {
-    "postgres": {
-     "id": "supabase-cred",
-     "name": "Supabase Leads DB"
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Count what needs attention",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count what needs attention": {
+      "main": [
+        [
+          {
+            "node": "Write the summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write the summary": {
+      "main": [
+        [
+          {
+            "node": "Queue the alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
-   },
-   "alwaysOutputData": true
   },
-  {
-   "parameters": {
-    "jsCode": "const d = $input.first().json || {};\nconst url = d.alerts && d.alerts.discord && d.alerts.discord.webhook_url;\nif (!url || !(d.alerts && d.alerts.enabled === true)) return [];\nconst top = (d.top || []).map((l) => '- ' + l.title + ' (' + l.source + (l.fit_score != null ? ', match ' + l.fit_score : '') + ')').join('\\n');\nconst lines = [\n  'Lead Radar daily summary',\n  'New leads in 24 h: ' + d.new_leads + ' | Strong matches waiting: ' + d.strong + ' | Trade matches: ' + d.trade_matches,\n  'Drafts to review: ' + d.drafts + ' | Replies waiting: ' + d.replies + ' | Tasks due: ' + d.tasks_due + ' | Open deals: ' + d.open_deals,\n];\nif (top) lines.push('Best new leads:', top);\nlines.push('http://localhost:3000');\nreturn [{ json: { webhook_url: url, content: lines.join('\\n') } }];"
-   },
-   "id": "node67",
-   "name": "Write the summary",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    700,
-    300
-   ]
-  },
-  {
-   "parameters": {
-    "method": "POST",
-    "url": "={{ $json.webhook_url }}",
-    "sendBody": true,
-    "specifyBody": "json",
-    "jsonBody": "={{ JSON.stringify({ content: $json.content, allowed_mentions: { parse: [] } }) }}",
-    "options": {
-     "timeout": 15000
-    }
-   },
-   "id": "node68",
-   "name": "Post to Discord",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    930,
-    300
-   ],
-   "onError": "continueRegularOutput"
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "errorAlerts01"
   }
- ],
- "connections": {
-  "Schedule": {
-   "main": [
-    [
-     {
-      "node": "Count what needs attention",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Count what needs attention": {
-   "main": [
-    [
-     {
-      "node": "Write the summary",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Write the summary": {
-   "main": [
-    [
-     {
-      "node": "Post to Discord",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  }
- },
- "active": false,
- "settings": {
-  "executionOrder": "v1",
-  "errorWorkflow": "errorAlerts01"
- }
 }

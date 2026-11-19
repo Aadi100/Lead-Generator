@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS deals (
   contact        TEXT,
   game           TEXT,
   item_type      TEXT,
-  platform       TEXT,                              -- Discord, Reddit, Eldorado, Upwork ...
+  platform       TEXT,                              -- Reddit, Eldorado, Upwork ...
   value          NUMERIC,                           -- what the other side pays me (sell) or what I pay (buy)
   cost           NUMERIC,                           -- what it cost me to get/deliver it (for profit)
   currency       TEXT DEFAULT 'USD',

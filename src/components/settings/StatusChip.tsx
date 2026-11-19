@@ -12,13 +12,14 @@ const TONE: Record<Health, string> = {
   setup: 'bg-warning-soft text-warning ring-warning-border',
   problem: 'bg-danger-soft text-danger ring-danger-border',
 };
-const LABEL: Record<Health, string> = { ready: 'Ready', setup: 'Needs setup', problem: 'Problem' };
+const LABEL: Record<Health, string> = { ready: 'Working', setup: 'Not set up yet', problem: 'Problem' };
 
-export function HealthChip({ health, className }: { health: Health; className?: string }) {
+/** Status chip with a plain-words label (never a bare dot). */
+export function HealthChip({ health, label, className }: { health: Health; label?: string; className?: string }) {
   return (
-    <span className={cx(pill, TONE[health], className)}>
-      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
-      {LABEL[health]}
+    <span className={cx(pill, TONE[health], 'max-w-full', className)}>
+      <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+      <span className="truncate">{label ?? LABEL[health]}</span>
     </span>
   );
 }
@@ -35,35 +36,75 @@ export function ResultChip({ state, message }: { state: 'running' | 'ok' | 'bad'
   );
 }
 
-type Report = { health: Health; note: string };
+export type Report = { health: Health; /** Short chip text, e.g. 'Needs a key' */ label: string; note: string };
 
-/** Works out Ready / Needs setup / Problem for each integration tab from the saved settings. */
+/** Works out the status of each tab from the saved settings, with short plain labels. */
 export function useHealth(): Partial<Record<SettingsTabId, Report>> {
   const [reports, setReports] = useState<Partial<Record<SettingsTabId, Report>>>({});
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [{ values, error }, st] = await Promise.all([loadSettings(['sending', 'smtp', 'resend', 'imap', 'alerts', 'integrations']), loadSetting('imap_state')]);
+      const [{ values, error }, st] = await Promise.all([
+        loadSettings(['profile', 'targeting', 'prospecting', 'sending', 'smtp', 'resend', 'imap', 'alerts', 'integrations']),
+        loadSetting('imap_state'),
+      ]);
       if (cancelled || error) return;
-      const { sending, smtp, resend, imap, alerts, integrations } = values;
+      const { profile, targeting, prospecting, sending, smtp, resend, imap, alerts, integrations } = values;
       const out: Partial<Record<SettingsTabId, Report>> = {};
+      const short = (m: string) => (m.length > 40 ? `${m.slice(0, 38)}…` : m);
+
+      const profileOk = profile.your_name.trim() !== '' && profile.services.length > 0;
+      out.profile = profileOk
+        ? { health: 'ready', label: 'Done', note: 'I know what you sell.' }
+        : { health: 'setup', label: 'Not set up yet', note: 'Add your name and what you sell so messages sound like you.' };
+
+      const targetOk = targeting.keywords.length > 0 || targeting.topics.length > 0;
+      out.targeting = targetOk
+        ? { health: 'ready', label: 'Done', note: 'Leads are ranked with your words.' }
+        : { health: 'setup', label: 'Not set up yet', note: 'Add a few words describing the work you want.' };
 
       const emailOk = sending.from_email.trim() !== '' && ((sending.provider === 'smtp' && smtp.host.trim() !== '') || (sending.provider === 'resend' && resend.api_key.trim() !== ''));
-      out.email = emailOk ? { health: 'ready', note: 'Emails can be sent when you press Send now.' } : { health: 'setup', note: 'Pick how emails are sent and add a From address. You can still write and copy pitches meanwhile.' };
+      out.email = emailOk
+        ? { health: 'ready', label: 'Working', note: 'Emails can be sent when you press Send now.' }
+        : { health: 'setup', label: 'Not set up yet', note: 'Pick how emails are sent and add a From address. You can still write and copy messages meanwhile.' };
 
       const imapOk = imap.enabled && imap.host.trim() !== '' && imap.user.trim() !== '' && imap.pass.trim() !== '';
-      if (!st.error && st.value.last_error) out.imap = { health: 'problem', note: `The last inbox check failed: ${st.value.last_error}` };
-      else out.imap = imapOk ? { health: 'ready', note: 'Replies are being watched.' } : { health: 'setup', note: 'Add your inbox details so I can spot replies.' };
+      if (!st.error && st.value.last_error) out.imap = { health: 'problem', label: `Problem: ${short(st.value.last_error)}`, note: `The last inbox check failed: ${st.value.last_error}` };
+      else out.imap = imapOk ? { health: 'ready', label: 'Working', note: 'Replies are being watched.' } : { health: 'setup', label: 'Not set up yet', note: 'Add your inbox details so I can spot replies.' };
 
-      const alertsOk = !!(alerts.discord.webhook_url || alerts.email.to || (alerts.telegram.bot_token && alerts.telegram.chat_id) || (alerts.whatsapp.phone && alerts.whatsapp.apikey));
-      out.alerts = alertsOk && alerts.enabled ? { health: 'ready', note: 'Alerts are on.' } : { health: 'setup', note: alertsOk ? 'A channel is set up but alerts are switched off.' : 'Add a channel to get alerts.' };
+      const alertsOk = !!(alerts.email.to || (alerts.whatsapp.phone && alerts.whatsapp.apikey));
+      out.alerts =
+        alertsOk && alerts.enabled
+          ? { health: 'ready', label: 'On', note: 'Alerts are on.' }
+          : { health: 'setup', label: alertsOk ? 'Switched off' : 'Not set up yet', note: alertsOk ? 'Alerts are set up but switched off.' : 'Add a place to get alerts, such as email or WhatsApp.' };
 
       const sources = [integrations.serper, integrations.x, integrations.reddit_api, integrations.upwork_inbox];
-      const statuses = Object.values(integrations.status ?? {});
-      const anyBad = statuses.some((s) => s && s.ok === false);
+      const hasKey: Record<string, boolean> = {
+        serper: integrations.serper.api_key.trim() !== '',
+        x: integrations.x.bearer_token.trim() !== '',
+        reddit_api: integrations.reddit_api.client_id.trim() !== '' && integrations.reddit_api.client_secret.trim() !== '',
+        producthunt: true,
+        upwork_inbox: imap.enabled && imap.host.trim() !== '',
+      };
+      // Only count a failed test if the connection still has its key and is not switched off.
+      const bad = Object.entries(integrations.status ?? {}).find(([name, s]) => {
+        if (!s || s.ok !== false || !hasKey[name]) return false;
+        const cfg = (integrations as unknown as Record<string, { enabled?: boolean } | undefined>)[name];
+        return cfg?.enabled !== false;
+      })?.[1];
       const anyOn = sources.some((s) => s && 'enabled' in s && s.enabled);
-      out.connections = anyBad ? { health: 'problem', note: 'At least one connection failed its last test.' } : anyOn ? { health: 'ready', note: 'Your switched-on connections have no known problems.' } : { health: 'setup', note: 'No connection is switched on yet.' };
+      const needsKey = integrations.serper.enabled && integrations.serper.api_key.trim() === '';
+      out.connections = bad
+        ? { health: 'problem', label: `Problem: ${short(bad.message || 'a test failed')}`, note: 'At least one connection failed its last test. Open it to see why.' }
+        : needsKey || !anyOn
+          ? { health: 'setup', label: 'Needs a key', note: 'Add a key for at least one service so I can find leads on the web.' }
+          : { health: 'ready', label: 'Working', note: 'Your switched-on connections have no known problems.' };
+
+      const pOk = prospecting.enabled && prospecting.cities.length > 0;
+      out.prospecting = pOk
+        ? { health: 'ready', label: 'On', note: 'Local businesses are searched on a schedule.' }
+        : { health: 'setup', label: prospecting.enabled ? 'Add a city' : 'Switched off', note: 'Optional. Add a city and switch it on to find local businesses.' };
 
       setReports(out);
     })();

@@ -111,7 +111,7 @@ export default function LeadAlsoSeen({
       {(same.length > 0 || suspected.length > 0) && (
         <div className="rounded-card border border-primary-border bg-primary-soft/40 p-3.5">
           <div className="flex items-center justify-between gap-2">
-            <SectionTitle>Also seen on</SectionTitle>
+            <SectionTitle>Found in more than one place</SectionTitle>
             <span className="text-xs text-fg-subtle">{same.length > 0 ? `${same.length} other ${same.length === 1 ? 'post' : 'posts'}` : 'Needs your check'}</span>
           </div>
           <p className="mt-1 text-sm text-fg-muted">

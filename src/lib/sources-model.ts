@@ -32,7 +32,7 @@ export type SourceContext = {
   trading: TradingSettings;
   prospecting: { enabled: boolean; last_run: string | null; last_result: string | Record<string, unknown> | null; cities: string[]; places_enabled: boolean; places_niches: string[] };
   imapReady: boolean;
-  tradeState: { discord: Record<string, string>; reddit_last_run: string | null; subs_ok: string[] };
+  tradeState: { reddit_last_run: string | null; subs_ok: string[] };
 };
 
 export type SourceDef = {
@@ -89,20 +89,6 @@ export const SOURCES: SourceDef[] = [
       const e = r && typeof r === 'object' ? (r as Record<string, unknown>).error : null;
       return c.trading.enabled && typeof e === 'string' && e ? e : null;
     },
-  },
-  {
-    id: 'discord',
-    name: 'Discord',
-    kind: 'worker',
-    schedule: 'Every trade scan',
-    hint: 'Trade messages from the channels you added.',
-    match: (l) => src(l) === 'discord',
-    quietAfterH: 72,
-    job: { type: 'trade_scan', label: 'Scan now' },
-    configure: { href: '/trading/catalog', label: 'Catalog' },
-    needsKey: (c) => (c.integrations.discord.bot_token ? null : 'Add a Discord bot token in Settings > Connections.'),
-    off: (c) => (c.trading.enabled && c.trading.discord.enabled && c.trading.discord.channels.length ? null : 'Discord channels are not switched on.'),
-    problem: (c) => integrationProblem(c, 'discord') ?? (Object.values(c.tradeState.discord).some((v) => /^error|fail/i.test(v)) ? 'A channel could not be read.' : null),
   },
   {
     id: 'reddit-hiring',

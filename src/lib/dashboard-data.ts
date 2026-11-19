@@ -25,6 +25,9 @@ export type DashRaw = {
   deals: Deal[];
   tasks: Task[];
   funnel: { found: number; pitched: number; replied: number; won: number };
+  /** Exact totals from count queries (the row lists below are only what the page needs, never the whole table). */
+  counts: { newLeads24: number; highMatch: number; drafts: number; replies: number; buyersWaiting: number; sellers: number; matched: number; leadsTotal: number };
+  hotLeads: Lead[];
   settings: DashSettings;
   n8n: N8nStatus;
   tablesMissing: { deals: boolean; tasks: boolean };
@@ -68,6 +71,8 @@ export type TodayData = {
   replies: ReplyRow[];
   followups: OutreachRow[];
   hot: Lead[];
+  draftsCount: number;
+  repliesCount: number;
   total: number;
 };
 
@@ -99,14 +104,12 @@ export function prettySource(s: string): string {
 }
 
 export function computeModel(raw: DashRaw, now = Date.now()): DashModel {
-  const { leads, outreach, replies, deals, tasks } = raw;
+  const { leads, outreach, replies, deals, tasks, counts } = raw;
   const today0 = startOfDay(now);
   const eod = endOfDay(now);
   const services = leads.filter((l) => !isTrade(l));
 
   // Stats
-  const newLeads24 = services.filter((l) => now - ms(l.created_at) <= DAY_MS).length;
-  const highMatchLeads = services.filter((l) => l.status === 'New' && (l.fit_score ?? 0) >= 70);
   const drafts = outreach.filter((o) => o.status === 'draft');
   const unhandled = replies.filter((r) => !r.handled);
   const openDeals = deals.filter((d) => OPEN_DEAL_STAGES.includes(d.stage));
@@ -119,10 +122,10 @@ export function computeModel(raw: DashRaw, now = Date.now()): DashModel {
   const doneDeals = deals.filter((d) => d.stage === 'done');
 
   const stats = {
-    newLeads: { value: newLeads24, series: dailySeries(services, DAYS, (l) => l.created_at, () => 1, now) },
-    highMatch: { value: highMatchLeads.length, series: dailySeries(services.filter((l) => (l.fit_score ?? 0) >= 70), DAYS, (l) => l.created_at, () => 1, now) },
-    drafts: { value: drafts.length, series: dailySeries(outreach.filter((o) => o.status === 'draft' || o.status === 'sent'), DAYS, (o) => o.created_at, () => 1, now) },
-    replies: { value: unhandled.length, series: dailySeries(replies, DAYS, (r) => r.received_at ?? r.created_at, () => 1, now) },
+    newLeads: { value: counts.newLeads24, series: dailySeries(services, DAYS, (l) => l.created_at, () => 1, now) },
+    highMatch: { value: counts.highMatch, series: dailySeries(services.filter((l) => (l.fit_score ?? 0) >= 70), DAYS, (l) => l.created_at, () => 1, now) },
+    drafts: { value: counts.drafts, series: dailySeries(outreach.filter((o) => o.status === 'draft' || o.status === 'sent'), DAYS, (o) => o.created_at, () => 1, now) },
+    replies: { value: counts.replies, series: dailySeries(replies, DAYS, (r) => r.received_at ?? r.created_at, () => 1, now) },
     openDeals: { value: openDeals.length, series: dailySeries(deals, DAYS, (d) => d.opened_at ?? d.created_at, () => 1, now) },
     revenue: { value: revenue, series: dailySeries(doneDeals, DAYS, (d) => d.closed_at ?? d.updated_at, (d) => d.value ?? 0, now) },
     profit: { value: profit, series: dailySeries(doneDeals, DAYS, (d) => d.closed_at ?? d.updated_at, (d) => (d.value ?? 0) - (d.cost ?? 0), now) },
@@ -133,17 +136,16 @@ export function computeModel(raw: DashRaw, now = Date.now()): DashModel {
     .filter((t) => !t.done && t.due_at && ms(t.due_at) <= eod)
     .sort((a, b) => ms(a.due_at) - ms(b.due_at));
   const followups = outreach.filter((o) => o.status === 'scheduled' && o.due_at && ms(o.due_at) <= eod).sort((a, b) => ms(a.due_at) - ms(b.due_at));
-  const hot = services
-    .filter((l) => l.status === 'New' && (l.fit_score ?? 0) >= 80)
-    .sort((a, b) => (b.fit_score ?? 0) - (a.fit_score ?? 0))
-    .slice(0, 5);
+  const hot = raw.hotLeads;
   const todayData: TodayData = {
     tasks: dueTasks,
     drafts,
     replies: unhandled,
     followups,
     hot,
-    total: dueTasks.length + drafts.length + unhandled.length + followups.length + hot.length,
+    draftsCount: counts.drafts,
+    repliesCount: counts.replies,
+    total: dueTasks.length + counts.drafts + counts.replies + followups.length + hot.length,
   };
 
   // Leads per day (30)
@@ -191,12 +193,10 @@ export function computeModel(raw: DashRaw, now = Date.now()): DashModel {
   health.sort((a, b) => order[a.state] - order[b.state] || b.count24h - a.count24h || a.name.localeCompare(b.name));
 
   // Trading
-  const trade = leads.filter(isTrade);
-  const live = trade.filter((l) => l.status === 'New');
   const trading = {
-    buyersWaiting: live.filter((l) => l.trade_side === 'buyer' && l.trade_match).length,
-    sellers: live.filter((l) => l.trade_side === 'seller').length,
-    matched: live.filter((l) => !!l.trade_match).length,
+    buyersWaiting: counts.buyersWaiting,
+    sellers: counts.sellers,
+    matched: counts.matched,
     hot: [...raw.settings.trade_market.rows]
       .sort((a, b) => b.wanted - a.wanted)
       .filter((r) => r.wanted > 0)
@@ -204,7 +204,7 @@ export function computeModel(raw: DashRaw, now = Date.now()): DashModel {
       .map((r) => ({ game: r.game || 'Other', wanted: r.wanted, offered: r.offered })),
   };
 
-  return { stats, today: todayData, funnel: raw.funnel, perDay, topSources, health, trading, hasDeals: deals.length > 0, leadsTotal: leads.length };
+  return { stats, today: todayData, funnel: raw.funnel, perDay, topSources, health, trading, hasDeals: deals.length > 0, leadsTotal: counts.leadsTotal };
 }
 
 function n8nFrom(v: unknown): N8nStatus {
@@ -217,39 +217,86 @@ function n8nFrom(v: unknown): N8nStatus {
   };
 }
 
+const PAGE = 1000;
+
+/** Supabase returns at most 1000 rows per request, so read in pages with .range() until a short page or the cap. */
+async function allRows(page: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>, cap = 5000): Promise<{ rows: Row[]; error: string | null }> {
+  const rows: Row[] = [];
+  for (let from = 0; from < cap; from += PAGE) {
+    const { data, error } = await page(from, from + PAGE - 1);
+    if (error) return { rows, error: error.message };
+    const got = (data ?? []) as Row[];
+    rows.push(...got);
+    if (got.length < PAGE) break;
+  }
+  return { rows, error: null };
+}
+
+const dedupe = <T extends { id: string }>(rows: T[]): T[] => {
+  const seen = new Set<string>();
+  return rows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+};
+
 export async function fetchDashboard(): Promise<{ raw: DashRaw | null; error: string | null }> {
   const keys = ['profile', 'profile_summary', 'sending', 'smtp', 'resend', 'imap', 'alerts', 'trading', 'trade_market', 'trade_state', 'integrations', 'worker_status'] as const;
   const leadCols = 'id,title,url,source,source_detail,status,created_at,lead_kind,trade_side,trade_match,game,item_type,fit_score,trust_score,trust_level,pitched_at,replied_at,category,budget_amount';
-  const [leadsQ, outQ, repQ, dealQ, taskQ, settingsQ, n8nQ, found, pitched, replied, won] = await Promise.all([
-    supabase.from('leads').select(leadCols).order('created_at', { ascending: false }).limit(2000),
-    supabase.from('outreach').select('id,lead_id,step,channel,to_email,to_name,subject,status,due_at,sent_at,created_at,updated_at,leads(title)').order('created_at', { ascending: false }).limit(2000),
-    supabase.from('replies').select('id,outreach_id,lead_id,from_email,from_name,subject,summary,category,handled,received_at,created_at').order('created_at', { ascending: false }).limit(1000),
-    supabase.from('deals').select('*').order('updated_at', { ascending: false }).limit(2000),
-    supabase.from('tasks').select('*').order('due_at', { ascending: true, nullsFirst: false }).limit(1000),
+  const outCols = 'id,lead_id,step,channel,to_email,to_name,subject,status,due_at,sent_at,created_at,updated_at,leads(title)';
+  const repCols = 'id,outreach_id,lead_id,from_email,from_name,subject,summary,category,handled,received_at,created_at';
+  const now = Date.now();
+  const since30 = new Date(startOfDay(now) - (CHART_DAYS - 1) * DAY_MS).toISOString();
+  const since14 = new Date(startOfDay(now) - (DAYS - 1) * DAY_MS).toISOString();
+  const since24h = new Date(now - DAY_MS).toISOString();
+  const eod = new Date(endOfDay(now)).toISOString();
+  const head = { count: 'exact' as const, head: true };
+  const svc = () => supabase.from('leads').select('id', head).neq('lead_kind', 'trade');
+  const liveTrade = () => supabase.from('leads').select('id', head).eq('lead_kind', 'trade').eq('status', 'New');
+
+  const [leadsQ, outRecent, outDrafts, outDue, repRecent, repOpen, dealsQ, tasksQ, hotQ, settingsQ, n8nQ, ...c] = await Promise.all([
+    allRows((f, t) => supabase.from('leads').select(leadCols).gte('created_at', since30).order('created_at', { ascending: false }).range(f, t)),
+    allRows((f, t) => supabase.from('outreach').select(outCols).gte('created_at', since14).order('created_at', { ascending: false }).range(f, t)),
+    supabase.from('outreach').select(outCols).eq('status', 'draft').order('created_at', { ascending: false }).limit(50),
+    supabase.from('outreach').select(outCols).eq('status', 'scheduled').lte('due_at', eod).limit(50),
+    allRows((f, t) => supabase.from('replies').select(repCols).gte('created_at', since14).order('created_at', { ascending: false }).range(f, t)),
+    supabase.from('replies').select(repCols).eq('handled', false).order('created_at', { ascending: false }).limit(100),
+    allRows((f, t) => supabase.from('deals').select('*').order('updated_at', { ascending: false }).range(f, t)),
+    allRows((f, t) => supabase.from('tasks').select('*').eq('done', false).order('due_at', { ascending: true, nullsFirst: false }).range(f, t)),
+    supabase.from('leads').select(leadCols).neq('lead_kind', 'trade').eq('status', 'New').gte('fit_score', 80).order('fit_score', { ascending: false }).limit(5),
     loadSettings([...keys]),
     supabase.from('app_settings').select('value').eq('key', 'n8n_status').maybeSingle(),
-    supabase.from('leads').select('id', { count: 'exact', head: true }).neq('lead_kind', 'trade').neq('status', 'Ignored'),
-    supabase.from('leads').select('id', { count: 'exact', head: true }).neq('lead_kind', 'trade').not('pitched_at', 'is', null),
-    supabase.from('leads').select('id', { count: 'exact', head: true }).neq('lead_kind', 'trade').not('replied_at', 'is', null),
-    supabase.from('leads').select('id', { count: 'exact', head: true }).neq('lead_kind', 'trade').eq('status', 'Won'),
+    svc().neq('status', 'Ignored'), // 0 found
+    svc().not('pitched_at', 'is', null), // 1 pitched
+    svc().not('replied_at', 'is', null), // 2 replied
+    svc().eq('status', 'Won'), // 3 won
+    svc().gte('created_at', since24h), // 4 new in 24h
+    svc().eq('status', 'New').gte('fit_score', 70), // 5 high match
+    supabase.from('outreach').select('id', head).eq('status', 'draft'), // 6 drafts
+    supabase.from('replies').select('id', head).eq('handled', false), // 7 replies
+    liveTrade().eq('trade_side', 'buyer').not('trade_match', 'is', null), // 8
+    liveTrade().eq('trade_side', 'seller'), // 9
+    liveTrade().not('trade_match', 'is', null), // 10
+    supabase.from('leads').select('id', head), // 11 all leads
   ]);
 
-  if (leadsQ.error) return { raw: null, error: leadsQ.error.message };
+  if (leadsQ.error && leadsQ.rows.length === 0) return { raw: null, error: leadsQ.error };
+  const n = (i: number) => c[i].count ?? 0;
 
-  const outreach = (outQ.data ?? []) as unknown as OutreachRow[];
+  const outreach = dedupe([...(outDrafts.data ?? []), ...(outDue.data ?? []), ...outRecent.rows] as unknown as OutreachRow[]);
+  const replies = dedupe([...(repOpen.data ?? []), ...repRecent.rows] as unknown as ReplyRow[]);
 
   return {
     error: null,
     raw: {
-      leads: ((leadsQ.data ?? []) as Row[]).map(normalizeLead),
+      leads: leadsQ.rows.map(normalizeLead),
       outreach,
-      replies: (repQ.data ?? []) as unknown as ReplyRow[],
-      deals: ((dealQ.data ?? []) as Row[]).map(normalizeDeal),
-      tasks: ((taskQ.data ?? []) as Row[]).map(normalizeTask),
-      funnel: { found: found.count ?? 0, pitched: pitched.count ?? 0, replied: replied.count ?? 0, won: won.count ?? 0 },
+      replies,
+      deals: dealsQ.rows.map(normalizeDeal),
+      tasks: tasksQ.rows.map(normalizeTask),
+      funnel: { found: n(0), pitched: n(1), replied: n(2), won: n(3) },
+      counts: { newLeads24: n(4), highMatch: n(5), drafts: n(6), replies: n(7), buyersWaiting: n(8), sellers: n(9), matched: n(10), leadsTotal: n(11) },
+      hotLeads: ((hotQ.data ?? []) as Row[]).map(normalizeLead),
       settings: settingsQ.values as DashSettings,
       n8n: n8nFrom(n8nQ.data?.value),
-      tablesMissing: { deals: !!dealQ.error, tasks: !!taskQ.error },
+      tablesMissing: { deals: !!dealsQ.error, tasks: !!tasksQ.error },
     },
   };
 }
@@ -303,13 +350,13 @@ export function setupSteps(s: DashSettings, workerOnline: boolean): SetupStep[] 
   const { profile, profile_summary: summary, sending, smtp, resend, imap, alerts, trading } = s;
   const hasLinks = profile.websites.some((w) => w.trim()) || profile.links.some((l) => l.trim());
   const emailReady = sending.from_email.trim() !== '' && ((sending.provider === 'smtp' && smtp.host.trim() !== '') || (sending.provider === 'resend' && resend.api_key.trim() !== ''));
-  const alertsReady = alerts.enabled && !!(alerts.discord.webhook_url || (alerts.telegram.bot_token && alerts.telegram.chat_id) || alerts.email.to || (alerts.whatsapp.phone && alerts.whatsapp.apikey));
+  const alertsReady = alerts.enabled && !!(alerts.email.to || (alerts.whatsapp.phone && alerts.whatsapp.apikey));
   return [
     { id: 'profile', title: 'Tell me about you', text: 'Add your name and links, then press "Learn from my links".', href: '/settings#profile', done: !!profile.your_name.trim() && hasLinks && !!summary.generated_at },
     { id: 'trading', title: 'Say what you sell or want', text: 'Optional. Finds game buyers and sellers.', href: '/trading/catalog', done: trading.enabled && trading.i_sell.length + trading.i_want.length > 0, optional: true },
     { id: 'email', title: 'Connect email sending', text: 'Add SMTP details or a Resend key.', href: '/settings#email', done: emailReady },
     { id: 'inbox', title: 'Connect your inbox', text: 'Optional. Spots replies for you.', href: '/settings#replies', done: imap.enabled && imap.host.trim() !== '' && imap.user.trim() !== '', optional: true },
     { id: 'alerts', title: 'Turn on instant alerts', text: 'Optional. A message when a strong lead arrives.', href: '/settings#alerts', done: alertsReady, optional: true },
-    { id: 'worker', title: 'Start the worker', text: 'Run npm run worker and leave it open.', done: workerOnline },
+    { id: 'worker', title: 'Start the background helper', text: 'Run npm run worker and leave it open.', done: workerOnline },
   ];
 }

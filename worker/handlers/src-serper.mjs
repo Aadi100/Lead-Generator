@@ -25,7 +25,7 @@ export async function runSerper(deps = {}) {
   for (const qd of queries) {
     const res = await d.fetchJson('https://google.serper.dev/search', {
       method: 'POST', headers: { 'X-API-KEY': String(cfg.api_key).trim(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: qd.q, num: 20, tbs: 'qdr:w' }), gapMs: 1000,
+      body: JSON.stringify({ q: qd.q, num: 10, tbs: 'qdr:w' }), gapMs: 1000,
     });
     if (!res.ok) { failure = res; break; }
     results.push({ kind: qd.kind, q: qd.q, organic: res.json?.organic || [] });

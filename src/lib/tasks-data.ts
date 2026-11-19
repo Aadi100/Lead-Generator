@@ -6,8 +6,8 @@ export const GROUP_ORDER: TaskGroupKey[] = ['overdue', 'today', 'upcoming', 'nod
 export const GROUP_LABEL: Record<TaskGroupKey, string> = {
   overdue: 'Overdue',
   today: 'Today',
-  upcoming: 'Upcoming',
-  nodate: 'No date',
+  upcoming: 'Coming up',
+  nodate: 'No date set',
   done: 'Done',
 };
 

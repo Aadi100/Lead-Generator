@@ -78,9 +78,17 @@ export const jobs = {
     if (!r.sent && !r.pruned && !r.failed) throw new Error('No device is subscribed yet. Enable notifications on a device first.');
     return r;
   },
+  // Queued by the n8n daily summary and failure-alert workflows.
+  async send_alert(job) {
+    const { subject, text } = job.payload || {};
+    if (!text) throw new Error('send_alert needs some text');
+    const r = await notify({ subject: subject || 'Lead Radar', text: String(text) });
+    if (!r.sent.length) throw new Error(r.errors.join('; ') || 'No alert channel is set up (Settings > Alerts)');
+    return r;
+  },
   async test_alert(job) {
     const alerts = await getSetting('alerts');
-    const want = job.payload?.channel && job.payload.channel !== 'all' ? [job.payload.channel] : ['discord', 'telegram', 'email', 'whatsapp'];
+    const want = job.payload?.channel && job.payload.channel !== 'all' ? [job.payload.channel] : ['email', 'whatsapp'];
     const configured = configuredChannels(alerts);
     const results = {};
     for (const ch of want) {

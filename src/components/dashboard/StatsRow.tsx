@@ -78,24 +78,21 @@ const I = {
 export function StatsRow({ model, loading }: { model: DashModel | null; loading: boolean }) {
   if (loading || !model) {
     return (
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 2xl:grid-cols-7 [&>*:last-child]:col-span-2 2xl:[&>*:last-child]:col-span-1">
-        {Array.from({ length: 7 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
           <TileSkeleton key={i} />
         ))}
       </div>
     );
   }
   const s = model.stats;
-  const dealSub = model.hasDeals ? 'Deals in progress' : 'No deals yet';
+  const dealSub = s.revenue.value > 0 ? `${money(s.revenue.value)} earned this month` : model.hasDeals ? 'Deals in progress' : 'No deals yet';
   return (
-    <Stagger step={45} className="grid grid-cols-2 gap-3 md:grid-cols-4 2xl:grid-cols-7 [&>*]:min-w-0 [&>*:last-child]:col-span-2 2xl:[&>*:last-child]:col-span-1 [&>*>a]:h-full">
-      <Tile label="New leads (24 h)" stat={s.newLeads} tone="primary" href="/leads" sub="Found in the last day" icon={I.leads} />
-      <Tile label="High-match leads" stat={s.highMatch} tone="success" href="/leads?status=New&sort=fit" sub="Fit 70+ and still new" icon={I.star} />
+    <Stagger step={45} className="grid grid-cols-2 gap-3 md:grid-cols-4 [&>*]:min-w-0 [&>*>a]:h-full">
+      <Tile label="New leads today" stat={s.newLeads} tone="primary" href="/leads" sub="Found in the last 24 hours" icon={I.leads} />
       <Tile label="Drafts to review" stat={s.drafts} tone="info" href="/outbox" sub="Messages waiting for you" icon={I.draft} />
       <Tile label="Replies waiting" stat={s.replies} tone={s.replies.value > 0 ? 'warning' : 'primary'} href="/outbox?tab=replies" sub="People who wrote back" icon={I.reply} />
       <Tile label="Open deals" stat={s.openDeals} tone="accent" href="/deals" sub={dealSub} icon={I.deal} />
-      <Tile label="Revenue this month" stat={s.revenue} tone="success" href="/deals" sub="Finished deals" format={money} icon={I.money} />
-      <Tile label="Profit this month" stat={s.profit} tone={s.profit.value < 0 ? 'danger' : 'success'} href="/deals" sub="Value minus cost" format={money} icon={I.trend} />
     </Stagger>
   );
 }

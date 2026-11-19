@@ -50,40 +50,47 @@ export type NavGroup = {
   accent?: boolean;
   /** false = no heading, always open (single-item groups). */
   collapsible: boolean;
+  /** Start closed until the person opens it (or visits a page inside it). */
+  defaultCollapsed?: boolean;
+  /** Rendered small and quiet at the bottom of the sidebar. */
+  quiet?: boolean;
   items: NavItem[];
 };
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    id: 'overview',
-    label: 'Overview',
+    id: 'main',
+    label: 'Main',
     collapsible: false,
-    items: [{ id: 'dashboard', label: 'Dashboard', href: '/', icon: DashboardIcon, description: 'Your day at a glance', keywords: 'home overview today', exact: true }],
+    items: [
+      { id: 'dashboard', label: 'Dashboard', href: '/', icon: DashboardIcon, description: 'Today: what needs you', keywords: 'home overview today', exact: true },
+      { id: 'leads', label: 'Leads', href: '/leads', icon: LeadsIcon, description: 'People asking for work, prospects and trade leads', keywords: 'people asking prospects inbox' },
+      { id: 'outbox', label: 'Outbox', href: '/outbox', icon: SendIcon, description: 'Drafts to review, sent mail and replies', keywords: 'email drafts replies send pitch', badge: 'outbox' },
+      { id: 'pipeline', label: 'Pipeline', href: '/pipeline', icon: PipelineIcon, description: 'Leads and deals by stage', keywords: 'kanban board stages funnel' },
+      { id: 'tasks', label: 'Tasks', href: '/tasks', icon: TasksIcon, description: 'Follow-ups and to-dos', keywords: 'todo reminders due', badge: 'tasks' },
+    ],
   },
   {
-    id: 'work',
-    label: 'Work',
+    id: 'clients',
+    label: 'Clients',
     collapsible: true,
     items: [
-      { id: 'leads', label: 'Leads', href: '/leads', icon: LeadsIcon, description: 'People asking for work, prospects and trade leads', keywords: 'people asking prospects inbox', badge: 'leads' },
-      { id: 'pipeline', label: 'Pipeline', href: '/pipeline', icon: PipelineIcon, description: 'Leads and deals by stage', keywords: 'kanban board stages funnel' },
-      { id: 'outbox', label: 'Outbox', href: '/outbox', icon: SendIcon, description: 'Drafts to review, sent mail and replies', keywords: 'email drafts replies send pitch', badge: 'outbox' },
-      { id: 'tasks', label: 'Tasks', href: '/tasks', icon: TasksIcon, description: 'Follow-ups and to-dos', keywords: 'todo reminders due', badge: 'tasks' },
       { id: 'contacts', label: 'Contacts', href: '/contacts', icon: ContactsIcon, description: 'People and companies you deal with', keywords: 'people companies address book' },
-      { id: 'deals', label: 'Deals', href: '/deals', icon: DealsIcon, description: 'Open and closed deals', keywords: 'orders sales revenue won', badge: 'deals' },
+      { id: 'deals', label: 'Deals', href: '/deals', icon: DealsIcon, description: 'Open and closed deals', keywords: 'orders sales revenue won' },
       { id: 'proposals', label: 'Proposals', href: '/proposals', icon: ProposalsIcon, description: 'Quotes and one page PDF proposals', keywords: 'quote estimate pdf pricing packages bid' },
     ],
   },
   {
     id: 'trading',
-    label: 'Game Trading',
+    label: 'Game trading',
     icon: TradingIcon,
     accent: true,
     collapsible: true,
+    defaultCollapsed: true,
     items: [
       { id: 'trading', label: 'Overview', href: '/trading', icon: TradingIcon, description: 'Game trading at a glance', keywords: 'game accounts boosting top-up', exact: true },
-      { id: 'buyers', label: 'Buyers', href: '/trading/buyers', icon: BuyersIcon, description: 'People who want to buy what you sell', keywords: 'trade buyers customers wtb', badge: 'buyers' },
-      { id: 'sellers', label: 'Sellers', href: '/trading/sellers', icon: SellersIcon, description: 'People selling what you want', keywords: 'trade sellers suppliers wts', badge: 'sellers' },
+      { id: 'buyers', label: 'Buyers', href: '/trading/buyers', icon: BuyersIcon, description: 'People who want to buy what you sell', keywords: 'trade buyers customers wtb' },
+      { id: 'sellers', label: 'Sellers', href: '/trading/sellers', icon: SellersIcon, description: 'People selling what you want', keywords: 'trade sellers suppliers wts' },
       { id: 'market', label: 'Market', href: '/trading/market', icon: MarketIcon, description: 'Demand, supply and prices by game', keywords: 'prices demand supply what to sell' },
       { id: 'stock', label: 'Stock', href: '/trading/stock', icon: StockIcon, description: 'What you hold to sell, with prices and profit', keywords: 'inventory stock items quantity sold profit listings' },
       { id: 'catalog', label: 'My catalog', href: '/trading/catalog', icon: CatalogIcon, description: 'What you sell and what you want to buy', keywords: 'inventory stock items accounts' },
@@ -101,12 +108,13 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'setup',
     label: 'Setup',
-    collapsible: true,
+    collapsible: false,
+    quiet: true,
     items: [
-      { id: 'sources', label: 'Sources', href: '/sources', icon: SourcesIcon, description: 'Where leads come from and whether each source works', keywords: 'scrapers reddit freelancer discord keys connections' },
+      { id: 'sources', label: 'Sources', href: '/sources', icon: SourcesIcon, description: 'Where leads come from and whether each finder works', keywords: 'lead finders scrapers reddit freelancer keys connections' },
       { id: 'capture', label: 'Capture', href: '/capture', icon: CaptureIcon, description: 'Save leads from any page you are viewing', keywords: 'bookmarklet paste add lead' },
-      { id: 'settings', label: 'Settings', href: '/settings', icon: SettingsIcon, description: 'Profile, email, alerts, safety and more', keywords: 'preferences account smtp' },
       { id: 'help', label: 'Help', href: '/help', icon: HelpIcon, description: 'How things work and what to do first', keywords: 'docs guide support shortcuts' },
+      { id: 'settings', label: 'Settings', href: '/settings', icon: SettingsIcon, description: 'Profile, email, alerts, safety and more', keywords: 'preferences account smtp' },
     ],
   },
 ];
@@ -114,7 +122,7 @@ export const NAV_GROUPS: NavGroup[] = [
 export const ALL_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
 /** The four modules on the phone tab bar. A fifth "More" tab opens a sheet with everything else. */
-export const MOBILE_PRIMARY_IDS = ['dashboard', 'leads', 'pipeline', 'outbox'] as const;
+export const MOBILE_PRIMARY_IDS = ['dashboard', 'leads', 'outbox', 'pipeline'] as const;
 
 export function groupOf(itemId: string): NavGroup | undefined {
   return NAV_GROUPS.find((g) => g.items.some((i) => i.id === itemId));
@@ -137,9 +145,9 @@ export const SETTINGS_TABS: { id: string; label: string }[] = [
   { id: 'trading', label: 'Trading' },
   { id: 'email', label: 'Email sending' },
   { id: 'connections', label: 'Connections' },
-  { id: 'replies', label: 'Reply tracking' },
+  { id: 'replies', label: 'Inbox (replies)' },
   { id: 'alerts', label: 'Alerts' },
-  { id: 'prospecting', label: 'Local prospecting' },
+  { id: 'prospecting', label: 'Local business search' },
   { id: 'writing', label: 'Writing rules' },
   { id: 'safety', label: 'Safety' },
 ];

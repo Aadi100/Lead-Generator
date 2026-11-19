@@ -5,6 +5,7 @@ import { decodeCapture, type CapturePayload } from '@/lib/capture';
 import { Banner, Stagger } from '@/components/ui';
 import { PageContainer, PageHeader } from '@/components/shell';
 import InstallCard from '@/components/capture/InstallCard';
+import Advanced from '@/components/settings/Advanced';
 import PasteCard from '@/components/capture/PasteCard';
 import ReviewCard from '@/components/capture/ReviewCard';
 
@@ -24,10 +25,7 @@ function CaptureView() {
 
   return (
     <PageContainer width="narrow">
-      <PageHeader
-        title="Capture leads from any site"
-        subtitle="Marketplaces such as Eldorado, G2G, Z2U, FunPay and PlayerAuctions, plus Discord servers and Telegram groups you have joined, and forums, are not scraped for you. Most of them block bots or forbid it. Instead, while you browse them yourself, one click on a bookmark sends what you see to Lead Radar. You review it, then save it."
-      />
+      <PageHeader title="Capture a lead" subtitle="Found someone on a site we do not search for you? Send them here in one click." />
 
       <Stagger className="space-y-5">
         {error && (
@@ -39,12 +37,14 @@ function CaptureView() {
 
         {!payload && !error && (
           <Banner tone="info" title="Nothing captured yet">
-            Install the bookmark below, open a site, and click it. Or paste text further down.
+            Follow the three steps below. Your first capture shows up here to check.
           </Banner>
         )}
 
         <InstallCard />
-        <PasteCard />
+        <Advanced id="capture-other" title="Other ways to add a lead" hint="Paste text from anywhere, such as a message or a forum post.">
+          <PasteCard />
+        </Advanced>
       </Stagger>
     </PageContainer>
   );

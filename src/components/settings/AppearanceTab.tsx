@@ -1,5 +1,6 @@
 "use client";
 
+import Advanced from './Advanced';
 import type { ReactNode } from 'react';
 import { useTheme, type Theme } from '@/components/theme/ThemeProvider';
 import { MonitorIcon, MoonIcon, SunIcon } from '../Icons';
@@ -35,19 +36,20 @@ export default function AppearanceTab() {
                 <span className={cx('inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full', on ? 'bg-primary text-primary-on' : 'bg-surface text-fg-muted ring-1 ring-inset ring-border')}>{o.icon}</span>
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold text-fg">{o.label}</span>
-                  <span className="block text-xs text-fg-subtle">{o.hint}</span>
+                  <span className="block text-sm text-fg-subtle">{o.hint}</span>
                 </span>
               </button>
             );
           })}
         </div>
-        <p className="mt-3 text-xs text-fg-subtle" aria-live="polite">
+        <p className="mt-3 text-sm text-fg-subtle" aria-live="polite">
           Showing the {resolved} look right now.
         </p>
       </Card>
 
       <AppNotificationsCard />
 
+      <Advanced id="appearance" title="Show about the glass look" className="!mt-2">
       <Card title="About the glass look">
         <div className="space-y-2 text-sm text-fg-muted">
           <p>
@@ -59,6 +61,7 @@ export default function AppearanceTab() {
           </p>
         </div>
       </Card>
+      </Advanced>
     </div>
   );
 }

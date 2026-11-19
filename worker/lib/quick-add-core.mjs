@@ -15,7 +15,6 @@ const MARKETPLACES = [
 ];
 // Freelance sites: leads captured here are work requests (not game trades), named after the site.
 const FREELANCE_SITES = [['fiverr.com', 'Fiverr'], ['upwork.com', 'Upwork']];
-const CHATS = [['discord.com', 'Discord'], ['discordapp.com', 'Discord'], ['web.telegram.org', 'Telegram'], ['telegram.org', 'Telegram'], ['t.me', 'Telegram']];
 const WANT_RE = /\b(wtb|want to buy|looking for|lf|wanted|buying|in need of)\b/i;
 const RATING_RE = /(\d(?:\.\d+)?)\s*(?:\/\s*5|★|stars?)?\s*[,|·-]\s*(\d[\d,.]*\s?k?)\s*(sales|orders|reviews?|feedbacks?|sold)/i;
 
@@ -34,20 +33,19 @@ export function describeItem(item, { sourceLabel } = {}) {
   const text = String(item?.text || '').trim().slice(0, MAX_TEXT);
   const host = hostOf(item?.site) || (isHttp(item?.url) ? hostOf(item.url) : '');
   const marketBrand = brandFor(host, MARKETPLACES);
-  const chatBrand = marketBrand ? null : brandFor(host, CHATS);
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
   const title = clip(item?.title || lines[0] || '', 140);
   const author = clip(item?.author || (marketBrand && (/seller\s*[:\-]\s*([^|(\n,]{2,40})/i.exec(text) || [])[1]) || '', 80) || null;
   const rating = marketBrand ? RATING_RE.exec(text) : null;
   const authorInfo = rating ? `${rating[1]} rating · ${rating[2].trim()} ${rating[3].toLowerCase()}` : null;
   const body = [text, item?.page_title && `Page: ${clip(item.page_title, 200)}`, item?.price_text && `Price: ${clip(item.price_text, 60)}`].filter(Boolean).join('\n');
-  const freelanceBrand = marketBrand || chatBrand ? null : brandFor(host, FREELANCE_SITES);
-  const source = marketBrand || chatBrand || freelanceBrand || clip(sourceLabel, 60) || host || 'Manual';
+  const freelanceBrand = marketBrand ? null : brandFor(host, FREELANCE_SITES);
+  const source = marketBrand || freelanceBrand || clip(sourceLabel, 60) || host || 'Manual';
   const channel = clip(item?.channel_label, 80);
   const sourceDetail = marketBrand || freelanceBrand ? 'Captured from page' : channel || 'Captured by hand';
-  const contact = author && chatBrand ? `${chatBrand.toLowerCase()}: ${author}` : author && marketBrand ? `${marketBrand.toLowerCase()}: ${author}` : null;
+  const contact = author && marketBrand ? `${marketBrand.toLowerCase()}: ${author}` : null;
   const url = isHttp(item?.url) ? String(item.url).trim() : stableUrl(text);
-  return { text, title, body, author, authorInfo, source, sourceDetail, contact, url, marketplace: !!marketBrand, chat: chatBrand };
+  return { text, title, body, author, authorInfo, source, sourceDetail, contact, url, marketplace: !!marketBrand };
 }
 
 function tradeLead(d, ctx) {

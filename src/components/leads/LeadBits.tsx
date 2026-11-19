@@ -1,4 +1,5 @@
 import type { Lead, Status } from '@/lib/types';
+import { budgetLabel, isFlagged } from '@/lib/format';
 import { Badge, cx } from '@/components/ui';
 import { chipLabel, type AlsoSeenChip } from '@/lib/lead-identity';
 import { learnedShare } from '@/lib/rank';
@@ -52,4 +53,58 @@ export function AlsoSeenBadge({ chip, className }: { chip: AlsoSeenChip; classNa
       {chipLabel(chip)}
     </Badge>
   );
+}
+
+export type MatchTag = { label: 'Strong match' | 'Good match' | 'Check first' | 'Be careful'; tone: 'primary' | 'info' | 'warning' | 'danger' };
+
+/** The ONE plain status tag for a lead (glossary: Strong / Good match, Check first, Be careful). Weak, unscored leads show none. */
+export function matchTag(lead: Lead): MatchTag | null {
+  if (isFlagged(lead)) return { label: 'Be careful', tone: 'danger' };
+  const fit = lead.fit_score;
+  if (lead.trust_level === 'Medium' && (fit === null || fit < 70)) return { label: 'Check first', tone: 'warning' };
+  if (fit !== null && fit >= 70) return { label: 'Strong match', tone: 'primary' };
+  if (fit !== null && fit >= 45) return { label: 'Good match', tone: 'info' };
+  return null;
+}
+
+const TRUST_WORDS: Record<string, string> = { High: 'Looks real', Medium: 'Check first', Low: 'Be careful' };
+
+/** Plain text for the hover tooltip: the numbers and extras that no longer sit on the row. */
+export function leadHint(lead: Lead, alsoSeen?: AlsoSeenChip | null): string {
+  const parts: string[] = [];
+  if (lead.fit_score !== null) parts.push(`Fit ${lead.fit_score}/100`);
+  if (lead.trust_level) parts.push(`${TRUST_WORDS[lead.trust_level] ?? lead.trust_level}${lead.trust_score != null ? ` (${lead.trust_score}/100)` : ''}`);
+  if (lead.category) parts.push(`Type: ${lead.category}`);
+  if (lead.best_email) parts.push(`Email found: ${lead.best_email}`);
+  if (alsoSeen) parts.push(`Also seen: ${chipLabel(alsoSeen)}`);
+  if (lead.fit_reasons.length > 0) parts.push(lead.fit_reasons.slice(0, 3).join('. '));
+  if (lead.flags.length > 0) parts.push(`Warning: ${lead.flags.slice(0, 2).join('; ')}`);
+  return parts.join(' | ') || 'Not scored yet';
+}
+
+export function MatchTagBadge({ lead, alsoSeen, className }: { lead: Lead; alsoSeen?: AlsoSeenChip | null; className?: string }) {
+  const t = matchTag(lead);
+  if (!t) return null;
+  return (
+    <Badge tone={t.tone} title={leadHint(lead, alsoSeen)} className={cx('shrink-0 whitespace-nowrap', className)}>
+      {t.label}
+    </Badge>
+  );
+}
+
+/** One short sentence for the top of the detail panel. */
+export function leadSummary(lead: Lead): string {
+  const tag = matchTag(lead);
+  const budget = budgetLabel(lead);
+  const first =
+    tag?.label === 'Be careful'
+      ? 'Be careful: this one has warning signs. Check who posted it before you reply.'
+      : tag?.label === 'Check first'
+        ? 'Worth a quick check on who posted it before you reply.'
+        : tag?.label === 'Strong match'
+          ? 'A strong match for what you offer.'
+          : tag?.label === 'Good match'
+            ? 'A good match for what you offer.'
+            : 'Not scored as a strong match.';
+  return `${first} ${budget ? `Budget ${budget}.` : 'No budget stated.'}`;
 }

@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { loadSettings } from '@/lib/settings';
 import { useShell } from './AppShell';
-import { CheckIcon, ChevronIcon } from './Icons';
-import { ProgressBar, cx } from './ui';
 
 const DISMISS_KEY = 'lead-radar:onboarding-dismissed:v1';
 const OPEN_KEY = 'lead-radar:onboarding-open:v1';
@@ -41,7 +39,7 @@ export default function OnboardingCard() {
         ((sending.provider === 'smtp' && smtp.host.trim() !== '') || (sending.provider === 'resend' && resend.api_key.trim() !== ''));
       const alertsReady =
         alerts.enabled &&
-        (alerts.discord.webhook_url || (alerts.telegram.bot_token && alerts.telegram.chat_id) || alerts.email.to || (alerts.whatsapp.phone && alerts.whatsapp.apikey));
+        (alerts.email.to || (alerts.whatsapp.phone && alerts.whatsapp.apikey));
       setSteps([
         {
           id: 'profile',
@@ -93,95 +91,33 @@ export default function OnboardingCard() {
 
   if (!steps || dismissed) return null;
 
-  const all: Step[] = [
-    ...steps,
-    {
-      id: 'worker',
-      title: 'Start the worker',
-      text: 'Run npm run worker in the project folder and leave the window open. It does the checking, writing and sending.',
-      done: workerOnline,
-    },
-  ];
-  const required = all.filter((s) => !s.optional);
+  const required = [...steps.filter((s) => !s.optional), { id: 'worker', done: workerOnline }];
   if (required.every((s) => s.done)) return null;
-  const doneCount = all.filter((s) => s.done).length;
-  const open = openPref ?? false;
-
-  const toggle = () => {
-    setOpenPref(!open);
-    try {
-      localStorage.setItem(OPEN_KEY, open ? '0' : '1');
-    } catch {
-      // storage unavailable, the choice just is not remembered
-    }
-  };
+  const left = required.filter((s) => !s.done).length;
+  void openPref;
 
   return (
-    <section aria-label="Setup progress" className="glass rounded-card border border-primary-border/60">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
-        <button
-          type="button"
-          onClick={toggle}
-          aria-expanded={open}
-          aria-controls="setup-steps"
-          className="btn -ml-1 flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-ctl px-1 py-1 text-left coarse:min-h-11"
-        >
-          <ChevronIcon className={cx('h-4 w-4 shrink-0 text-fg-subtle transition-transform duration-fast', open && 'rotate-180')} aria-hidden="true" />
-          <span className="text-sm font-semibold text-fg">Setup progress</span>
-          <span className="font-num text-sm text-fg-muted">
-            {doneCount}/{all.length}
-          </span>
-        </button>
-        <ProgressBar value={doneCount} max={all.length} label="Setup progress" className="w-28 sm:w-40" />
-        <button
-          type="button"
-          onClick={toggle}
-          className="btn btn-secondary inline-flex min-h-8 cursor-pointer items-center rounded-ctl px-3 py-1 text-[13px] font-medium coarse:min-h-11"
-        >
-          {open ? 'Close steps' : 'Continue setup'}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setDismissed(true);
-            try {
-              localStorage.setItem(DISMISS_KEY, '1');
-            } catch {
-              // storage unavailable, the card just returns next visit
-            }
-          }}
-          className="btn cursor-pointer rounded-ctl px-2 py-1 text-[13px] font-medium text-fg-subtle hover:bg-surface-2 hover:text-fg coarse:min-h-11"
-        >
-          Hide
-        </button>
-      </div>
-      {open && (
-        <ol id="setup-steps" className="grid gap-2 border-t border-border px-4 py-3 sm:grid-cols-2 xl:grid-cols-3">
-          {all.map((s, i) => (
-            <li key={s.id} className="flex items-start gap-3 rounded-ctl bg-surface-2/60 p-3 ring-1 ring-inset ring-border">
-              <span
-                className={cx('mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold', s.done ? 'bg-success-solid text-white' : 'bg-surface text-fg-subtle ring-1 ring-inset ring-border-strong')}
-                aria-hidden="true"
-              >
-                {s.done ? <CheckIcon className="h-4 w-4" /> : i + 1}
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-fg">
-                  {s.title}
-                  {s.optional && <span className="ml-1 text-xs font-normal text-fg-subtle">(optional)</span>}
-                  <span className="sr-only">{s.done ? ', done' : ', not done yet'}</span>
-                </p>
-                <p className="text-xs text-fg-subtle">{s.text}</p>
-                {s.href && !s.done && (
-                  <Link href={s.href} className="mt-1 inline-block text-xs font-semibold text-primary-text hover:underline">
-                    Open settings
-                  </Link>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
-      )}
-    </section>
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-sm text-fg-muted" role="note">
+      <span>
+        Setup is not finished yet ({left} step{left === 1 ? '' : 's'} left).
+      </span>
+      <Link href="/" className="font-medium text-primary-text hover:underline">
+        Finish it on the dashboard
+      </Link>
+      <button
+        type="button"
+        onClick={() => {
+          setDismissed(true);
+          try {
+            localStorage.setItem(DISMISS_KEY, '1');
+          } catch {
+            // storage unavailable, the hint just returns next visit
+          }
+        }}
+        className="btn cursor-pointer rounded-ctl px-1.5 py-0.5 text-[13px] text-fg-subtle hover:bg-surface-2 hover:text-fg"
+      >
+        Hide
+      </button>
+    </p>
   );
 }
