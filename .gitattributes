@@ -1,0 +1,2 @@
+# Keep Unix line endings so the server scripts run on Linux.
+deploy/* text eol=lf

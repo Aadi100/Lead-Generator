@@ -24,7 +24,7 @@ for (const f of files) {
 }
 
 let claude = await claudeStatus();
-log('boot', `Claude CLI: ${claude.available ? claude.version : 'not available (' + claude.error + ')'}`);
+log('boot', `AI writer: ${claude.available ? claude.version : 'no key saved (Settings > AI writer)'}`);
 
 const now = () => new Date().toISOString();
 await sb.from('jobs').update({ status: 'failed', error: 'Worker restarted while this job was running', finished_at: now() }).eq('status', 'running');
@@ -43,7 +43,7 @@ async function beat() {
 }
 await beat();
 setInterval(beat, 10000);
-setInterval(async () => { claude = await claudeStatus(); }, 5 * 60 * 1000);
+setInterval(async () => { claude = await claudeStatus(); }, 60 * 1000);
 
 const running = new Set();
 let polling = false;

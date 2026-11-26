@@ -31,7 +31,7 @@ function Cell({ item }: { item: Item }) {
   );
 }
 
-/** Top card: one glance at worker, Claude CLI, n8n, sending and missing keys. */
+/** Top card: one glance at worker, AI writer, n8n, sending and missing keys. */
 export function AutomationCard({ data }: { data: SourcesData }) {
   const { ctx, worker, sendingPaused, keysMissing } = data;
   const err = ctx.n8n.last_error;

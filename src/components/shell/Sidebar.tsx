@@ -3,37 +3,35 @@
 import Link from 'next/link';
 import { ChevronIcon, PanelLeftIcon, PauseIcon, PlayIcon } from '@/components/Icons';
 import { Button, CountBadge, IconButton, RadarMark, cx, useSlider } from '@/components/ui';
-import { activeItemFor, NAV_GROUPS, type NavGroup, type NavItem } from './nav';
+import { areaFor, NAV_AREAS, type NavArea } from './nav';
 import type { BadgeCounts } from './counts';
-import { WorkerStatus } from './WorkerStatus';
-import type { WorkerInfo } from './types';
 
 const PAUSE_HINT = 'Stops every email until you resume';
 
-function NavLink({ item, active, accent, rail, count }: { item: NavItem; active: boolean; accent?: boolean; rail: boolean; count: number | null }) {
-  const Icon = item.icon;
+function AreaLink({ area, active, rail, count }: { area: NavArea; active: boolean; rail: boolean; count: number | null }) {
+  const Icon = area.icon;
   const center = rail ? 'justify-center' : 'justify-center lg:justify-start';
   const label = rail ? 'hidden' : 'hidden lg:inline';
   return (
     <Link
-      href={item.href}
+      href={area.href}
       aria-current={active ? 'page' : undefined}
-      title={item.label}
+      title={area.hint}
       className={cx(
-        'btn group relative flex h-9 items-center gap-3 rounded-ctl px-2.5 text-sm transition-colors duration-fast',
+        'btn group relative flex h-10 items-center gap-3 rounded-ctl px-2.5 text-[15px] transition-colors duration-fast',
         center,
-        active ? cx('z-10 font-medium', accent ? 'text-accent-text' : 'text-primary-text') : 'text-fg-muted hover:bg-surface-2 hover:text-fg',
+        active ? cx('z-10 font-medium', area.accent ? 'text-accent-text' : 'text-primary-text') : 'text-fg-muted hover:bg-surface-2 hover:text-fg',
       )}
       data-on={active ? 'true' : undefined}
-      data-accent={accent ? 'true' : undefined}
+      data-accent={area.accent ? 'true' : undefined}
     >
-      <Icon className={cx('h-[18px] w-[18px] shrink-0 transition-transform duration-base ease-soft group-hover:translate-x-0.5', active && 'translate-x-0.5')} />
-      <span className={cx('nav-label-in min-w-0 flex-1 truncate', label)}>{item.label}</span>
+      <Icon className={cx('h-5 w-5 shrink-0 transition-transform duration-base ease-soft group-hover:translate-x-0.5', active && 'translate-x-0.5')} />
+      <span className={cx('nav-label-in min-w-0 flex-1 truncate', label)}>{area.label}</span>
       {count ? (
         <CountBadge
           n={count}
-          tone={accent ? 'accent' : 'primary'}
-          label={`${count} ${item.label}`}
+          tone={area.accent ? 'accent' : 'primary'}
+          label={`${count} ${area.label}`}
           className={cx('absolute right-1 top-0.5 !min-w-[1rem] !px-1 !leading-4', !rail && 'lg:static lg:!px-1.5 lg:!leading-5')}
         />
       ) : null}
@@ -41,60 +39,16 @@ function NavLink({ item, active, accent, rail, count }: { item: NavItem; active:
   );
 }
 
-function Group({
-  group,
-  pathname,
-  rail,
-  collapsed,
-  onToggle,
-  counts,
-}: {
-  group: NavGroup;
-  pathname: string;
-  rail: boolean;
-  collapsed: boolean;
-  onToggle: () => void;
-  counts: BadgeCounts;
-}) {
-  const active = activeItemFor(pathname);
-  const GroupIcon = group.icon;
-  return (
-    <div className={cx('px-2', group.quiet && 'mt-auto border-t border-border pt-2')}>
-      {group.collapsible && (
-        <>
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-expanded={!collapsed}
-            aria-controls={`nav-group-${group.id}`}
-            className={cx('btn mt-3 items-center gap-2 px-2.5 pb-1 text-xs font-semibold uppercase tracking-wide text-fg-subtle hover:text-fg', rail ? 'hidden' : 'hidden lg:flex')}
-          >
-            {GroupIcon && <GroupIcon className={cx('h-3.5 w-3.5', group.accent && 'text-accent-text')} />}
-            <span className="flex-1 text-left">{group.label}</span>
-            <ChevronIcon className={cx('h-3.5 w-3.5 transition-transform duration-base', collapsed && '-rotate-90')} />
-          </button>
-          <div aria-hidden="true" className={cx('mx-2 my-2.5 h-px bg-border', rail ? 'block' : 'lg:hidden')} />
-        </>
-      )}
-      <ul id={`nav-group-${group.id}`} className={cx('space-y-0.5', group.quiet && 'opacity-80', collapsed && (rail ? '' : 'lg:hidden'))}>
-        {group.items.map((item) => (
-          <li key={item.id}>
-            <NavLink item={item} active={active?.id === item.id} accent={group.accent} rail={rail} count={item.badge ? counts[item.badge] : null} />
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+function areaCount(area: NavArea, counts: BadgeCounts): number | null {
+  const n = (area.badges ?? []).reduce((sum, k) => sum + (counts[k] || 0), 0);
+  return n > 0 ? n : null;
 }
 
 export default function Sidebar({
   pathname,
   rail,
   onToggleRail,
-  collapsedGroups,
-  onToggleGroup,
   counts,
-  worker,
   paused,
   pausing,
   onTogglePause,
@@ -102,18 +56,18 @@ export default function Sidebar({
   pathname: string;
   rail: boolean;
   onToggleRail: () => void;
-  collapsedGroups: Record<string, boolean>;
-  onToggleGroup: (id: string) => void;
   counts: BadgeCounts;
-  worker: WorkerInfo;
   paused: boolean;
   pausing: boolean;
   onTogglePause: () => void;
 }) {
   const label = rail ? 'hidden' : 'hidden lg:inline';
-  const activeId = activeItemFor(pathname)?.id ?? '';
-  const slider = useSlider<HTMLElement>(activeId, [rail, collapsedGroups]);
-  const pillAccent = NAV_GROUPS.some((g) => g.accent && g.items.some((i) => i.id === activeId));
+  const activeArea = areaFor(pathname);
+  const activeId = activeArea?.id ?? '';
+  const slider = useSlider<HTMLElement>(activeId, [rail]);
+  const pillAccent = !!activeArea?.accent;
+  const top = NAV_AREAS.filter((a) => !a.bottom);
+  const bottom = NAV_AREAS.filter((a) => a.bottom);
   return (
     <aside
       aria-label="Sidebar"
@@ -139,23 +93,23 @@ export default function Sidebar({
           data-ready={slider.ready}
           style={slider.style}
         />
-        {NAV_GROUPS.map((g) => (
-          <Group key={g.id} group={g} pathname={pathname} rail={rail} collapsed={collapsedGroups[g.id] ?? !!g.defaultCollapsed} onToggle={() => onToggleGroup(g.id)} counts={counts} />
-        ))}
+        <ul className="space-y-1 px-2 pt-2">
+          {top.map((a) => (
+            <li key={a.id}>
+              <AreaLink area={a} active={activeId === a.id} rail={rail} count={areaCount(a, counts)} />
+            </li>
+          ))}
+        </ul>
+        <ul className="mt-auto space-y-1 border-t border-border px-2 pt-2">
+          {bottom.map((a) => (
+            <li key={a.id}>
+              <AreaLink area={a} active={activeId === a.id} rail={rail} count={areaCount(a, counts)} />
+            </li>
+          ))}
+        </ul>
       </nav>
 
       <div className="shrink-0 space-y-1 border-t border-border p-2">
-        {rail ? <WorkerStatus worker={worker} variant="icon" /> : (
-          <>
-            <div className="lg:hidden">
-              <WorkerStatus worker={worker} variant="icon" />
-            </div>
-            <div className="hidden lg:block">
-              <WorkerStatus worker={worker} variant="row" />
-            </div>
-          </>
-        )}
-
         <div className={cx(rail ? 'flex justify-center' : 'flex justify-center lg:block')}>
           <span title={PAUSE_HINT} className={cx(rail ? 'inline-flex' : 'inline-flex lg:hidden')}>
             <IconButton label={paused ? 'Resume sending' : 'Pause sending'} onClick={onTogglePause} disabled={pausing} variant={paused ? 'primary' : 'ghost'}>

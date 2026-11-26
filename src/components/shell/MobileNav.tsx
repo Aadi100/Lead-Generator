@@ -4,16 +4,21 @@ import Link from 'next/link';
 import { MoreIcon, PauseIcon, PlayIcon, SignOutIcon } from '@/components/Icons';
 import { Button, CountBadge, Drawer, SegmentedControl, cx } from '@/components/ui';
 import { useTheme, type Theme } from '@/components/theme/ThemeProvider';
-import { activeItemFor, ALL_ITEMS, MOBILE_PRIMARY_IDS, NAV_GROUPS } from './nav';
+import { areaFor, MOBILE_PRIMARY_IDS, NAV_AREAS, type NavArea } from './nav';
 import type { BadgeCounts } from './counts';
 import { WorkerStatus } from './WorkerStatus';
 import type { WorkerInfo } from './types';
 
-const PRIMARY = MOBILE_PRIMARY_IDS.map((id) => ALL_ITEMS.find((i) => i.id === id)!).filter(Boolean);
+const PRIMARY = MOBILE_PRIMARY_IDS.map((id) => NAV_AREAS.find((a) => a.id === id)!).filter(Boolean);
 
-/** Phone tab bar: Dashboard, Leads, Outbox, Pipeline, and More (opens the sheet). Hidden from 768 px up. */
+function areaCount(area: NavArea, counts: BadgeCounts): number | null {
+  const n = (area.badges ?? []).reduce((sum, k) => sum + (counts[k] || 0), 0);
+  return n > 0 ? n : null;
+}
+
+/** Phone tab bar: Home, Leads, Messages, My work, and More (opens the sheet). Hidden from 768 px up. */
 export function BottomNav({ pathname, counts, onMore, moreActive }: { pathname: string; counts: BadgeCounts; onMore: () => void; moreActive: boolean }) {
-  const active = activeItemFor(pathname);
+  const active = areaFor(pathname);
   const onPrimary = active ? PRIMARY.some((p) => p.id === active.id) : false;
   const tab = 'btn relative flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors duration-fast';
   return (
@@ -22,7 +27,7 @@ export function BottomNav({ pathname, counts, onMore, moreActive }: { pathname: 
         {PRIMARY.map((item) => {
           const on = active?.id === item.id;
           const Icon = item.icon;
-          const n = item.badge ? counts[item.badge] : null;
+          const n = areaCount(item, counts);
           return (
             <li key={item.id}>
               <Link href={item.href} aria-current={on ? 'page' : undefined} className={cx(tab, on ? 'text-primary-text' : 'text-fg-subtle')}>
@@ -73,7 +78,7 @@ export function MobileSheet({
   email: string;
 }) {
   const { theme, setTheme } = useTheme();
-  const active = activeItemFor(pathname);
+  const active = areaFor(pathname);
   const primaryIds = new Set<string>(MOBILE_PRIMARY_IDS);
   const themes: { id: Theme; label: string }[] = [
     { id: 'light', label: 'Light' },
@@ -83,39 +88,32 @@ export function MobileSheet({
   return (
     <Drawer open={open} onClose={onClose} side="bottom" title="Menu" description={email || undefined}>
       <div className="space-y-5">
-        {NAV_GROUPS.map((g) => {
-          const items = g.items.filter((i) => !primaryIds.has(i.id));
-          if (items.length === 0) return null;
-          return (
-            <section key={g.id} aria-label={g.label}>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">{g.label}</h3>
-              <ul className="grid grid-cols-3 gap-2">
-                {items.map((item) => {
-                  const Icon = item.icon;
-                  const on = active?.id === item.id;
-                  const n = item.badge ? counts[item.badge] : null;
-                  return (
-                    <li key={item.id}>
-                      <Link
-                        href={item.href}
-                        onClick={onClose}
-                        aria-current={on ? 'page' : undefined}
-                        className={cx(
-                          'btn relative flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-card border px-1.5 py-2 text-center text-[13px] font-medium transition-colors duration-fast',
-                          on ? (g.accent ? 'border-success-border bg-accent-soft text-accent-text' : 'border-primary-border bg-primary-soft text-primary-text') : 'border-border bg-surface text-fg hover:bg-surface-2',
-                        )}
-                      >
-                        <Icon className="h-5 w-5" />
-                        <span className="leading-tight">{item.label}</span>
-                        {n ? <CountBadge n={n} className="absolute right-1.5 top-1.5" label={`${n} ${item.label}`} /> : null}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          );
-        })}
+        <section aria-label="More">
+          <ul className="grid grid-cols-3 gap-2">
+            {NAV_AREAS.filter((a) => !primaryIds.has(a.id)).map((item) => {
+              const Icon = item.icon;
+              const on = active?.id === item.id;
+              const n = areaCount(item, counts);
+              return (
+                <li key={item.id}>
+                  <Link
+                    href={item.href}
+                    onClick={onClose}
+                    aria-current={on ? 'page' : undefined}
+                    className={cx(
+                      'btn relative flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-card border px-1.5 py-2 text-center text-[13px] font-medium transition-colors duration-fast',
+                      on ? (item.accent ? 'border-success-border bg-accent-soft text-accent-text' : 'border-primary-border bg-primary-soft text-primary-text') : 'border-border bg-surface text-fg hover:bg-surface-2',
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="leading-tight">{item.label}</span>
+                    {n ? <CountBadge n={n} className="absolute right-1.5 top-1.5" label={`${n} ${item.label}`} /> : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
 
         <section aria-label="Preferences" className="space-y-3 border-t border-border pt-4">
           <div className="flex items-center justify-between gap-3">

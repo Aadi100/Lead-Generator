@@ -12,7 +12,8 @@ import Sidebar from './shell/Sidebar';
 import Topbar from './shell/Topbar';
 import { BottomNav, MobileSheet } from './shell/MobileNav';
 import CommandPalette from './shell/CommandPalette';
-import { activeItemFor, groupOf, NAV_GROUPS } from './shell/nav';
+import SectionTabs from './shell/SectionTabs';
+import { activeItemFor } from './shell/nav';
 import { EMPTY_COUNTS, fetchBadgeCounts, REFRESH_COUNTS_EVENT, type BadgeCounts } from './shell/counts';
 import type { LiveState, WorkerInfo } from './shell/types';
 
@@ -38,7 +39,6 @@ export function useShell(): ShellContext {
 
 const OFFLINE_AFTER_MS = 40_000;
 const RAIL_KEY = 'lr:sidebar';
-const GROUPS_KEY = 'lr:nav-groups';
 
 /**
  * Wraps every signed-in page: sidebar, top bar, phone tab bar, command palette, toasts and the pause banner.
@@ -57,7 +57,6 @@ export default function AppShell({ children }: { active?: string; children: Reac
   const [live, setLive] = useState<LiveState>('connecting');
   const [pausing, setPausing] = useState(false);
   const [rail, setRail] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const countTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -66,11 +65,6 @@ export default function AppShell({ children }: { active?: string; children: Reac
   useEffect(() => {
     try {
       setRail(localStorage.getItem(RAIL_KEY) === 'rail');
-      const raw = localStorage.getItem(GROUPS_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown;
-        if (parsed && typeof parsed === 'object') setCollapsedGroups(parsed as Record<string, boolean>);
-      }
     } catch {
       // defaults
     }
@@ -86,28 +80,6 @@ export default function AppShell({ children }: { active?: string; children: Reac
       return !v;
     });
   }, []);
-
-  const toggleGroup = useCallback((id: string) => {
-    setCollapsedGroups((cur) => {
-      const def = !!NAV_GROUPS.find((g) => g.id === id)?.defaultCollapsed;
-      const next = { ...cur, [id]: !(cur[id] ?? def) };
-      try {
-        localStorage.setItem(GROUPS_KEY, JSON.stringify(next));
-      } catch {
-        // not persisted
-      }
-      return next;
-    });
-  }, []);
-
-  // Navigating into a collapsed group opens it.
-  useEffect(() => {
-    const item = activeItemFor(pathname);
-    const group = item ? groupOf(item.id) : undefined;
-    if (group && (collapsedGroups[group.id] ?? !!group.defaultCollapsed)) setCollapsedGroups((cur) => ({ ...cur, [group.id]: false }));
-    // collapsedGroups is intentionally read once per route change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
 
   useEffect(() => {
     setSheetOpen(false);
@@ -268,10 +240,7 @@ export default function AppShell({ children }: { active?: string; children: Reac
           pathname={pathname}
           rail={rail}
           onToggleRail={toggleRail}
-          collapsedGroups={collapsedGroups}
-          onToggleGroup={toggleGroup}
           counts={counts}
-          worker={worker}
           paused={sending.paused}
           pausing={pausing}
           onTogglePause={togglePause}
@@ -298,6 +267,7 @@ export default function AppShell({ children }: { active?: string; children: Reac
               </div>
             </div>
           )}
+          <SectionTabs pathname={pathname} />
           <div id="main-content" tabIndex={-1} className="min-w-0 flex-1 pb-24 outline-none md:pb-0">
             {children}
           </div>

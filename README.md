@@ -56,7 +56,7 @@ DASHBOARD_URL=http://localhost:3000
 npm run worker
 ```
 
-It needs the Claude Code command line (`claude`) to be installed and signed in. It uses your Claude plan, so there is no API bill. Without it, drafts fall back to plain templates.
+It needs an AI key (Gemini, DeepSeek or Claude), pasted in Settings > AI writer. Without it, drafts fall back to plain templates.
 
 ## Using it
 

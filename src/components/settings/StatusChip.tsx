@@ -46,11 +46,11 @@ export function useHealth(): Partial<Record<SettingsTabId, Report>> {
     let cancelled = false;
     void (async () => {
       const [{ values, error }, st] = await Promise.all([
-        loadSettings(['profile', 'targeting', 'prospecting', 'sending', 'smtp', 'resend', 'imap', 'alerts', 'integrations']),
+        loadSettings(['profile', 'targeting', 'prospecting', 'sending', 'smtp', 'resend', 'imap', 'alerts', 'integrations', 'ai']),
         loadSetting('imap_state'),
       ]);
       if (cancelled || error) return;
-      const { profile, targeting, prospecting, sending, smtp, resend, imap, alerts, integrations } = values;
+      const { profile, targeting, prospecting, sending, smtp, resend, imap, alerts, integrations, ai } = values;
       const out: Partial<Record<SettingsTabId, Report>> = {};
       const short = (m: string) => (m.length > 40 ? `${m.slice(0, 38)}…` : m);
 
@@ -72,6 +72,11 @@ export function useHealth(): Partial<Record<SettingsTabId, Report>> {
       const imapOk = imap.enabled && imap.host.trim() !== '' && imap.user.trim() !== '' && imap.pass.trim() !== '';
       if (!st.error && st.value.last_error) out.imap = { health: 'problem', label: `Problem: ${short(st.value.last_error)}`, note: `The last inbox check failed: ${st.value.last_error}` };
       else out.imap = imapOk ? { health: 'ready', label: 'Working', note: 'Replies are being watched.' } : { health: 'setup', label: 'Not set up yet', note: 'Add your inbox details so I can spot replies.' };
+
+      const aiKeyOk = ai[ai.provider].api_key.trim() !== '';
+      out.ai = aiKeyOk
+        ? { health: 'ready', label: 'Key saved', note: 'The AI writer is set up.' }
+        : { health: 'setup', label: 'Needs a key', note: 'Pick an AI and paste its key so messages can be written by AI.' };
 
       const alertsOk = !!(alerts.email.to || (alerts.whatsapp.phone && alerts.whatsapp.apikey));
       out.alerts =

@@ -158,6 +158,14 @@ const SANITIZERS: { [K in keyof SettingsMap]: (r: Raw) => SettingsMap[K] } = {
     folder: s(r.folder, 'INBOX'),
   }),
   imap_state: (r) => ({ last_checked: sn(r.last_checked), last_error: sn(r.last_error) }),
+  ai: (r) => {
+    const key = (v: unknown) => {
+      const o = obj(v);
+      return { api_key: s(o.api_key), model: s(o.model) };
+    };
+    const p = s(r.provider);
+    return { provider: p === 'anthropic' || p === 'deepseek' ? p : 'gemini', anthropic: key(r.anthropic), gemini: key(r.gemini), deepseek: key(r.deepseek) };
+  },
   alerts: (r) => {
     const em = obj(r.email);
     const wa = obj(r.whatsapp);
@@ -344,7 +352,7 @@ export async function patchSetting<K extends keyof SettingsMap>(
   return { value: sanitizeSetting(key, next), error: null };
 }
 
-type FormKey = 'profile' | 'sending' | 'smtp' | 'resend' | 'imap' | 'alerts' | 'prospecting' | 'targeting' | 'trading' | 'integrations';
+type FormKey = 'profile' | 'sending' | 'smtp' | 'resend' | 'imap' | 'alerts' | 'ai' | 'prospecting' | 'targeting' | 'trading' | 'integrations';
 
 export function useSettingForm<K extends FormKey>(key: K, owned?: (keyof SettingsMap[K])[]) {
   const [saved, setSaved] = useState<SettingsMap[K]>(() => defaultSetting(key));

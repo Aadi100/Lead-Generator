@@ -12,6 +12,7 @@ import ConnectionsTab from '@/components/settings/ConnectionsTab';
 import EmailTab from '@/components/settings/EmailTab';
 import RepliesTab from '@/components/settings/RepliesTab';
 import AlertsTab from '@/components/settings/AlertsTab';
+import AiTab from '@/components/settings/AiTab';
 import ProspectingTab from '@/components/settings/ProspectingTab';
 import WritingTab from '@/components/settings/WritingTab';
 import SafetyTab from '@/components/settings/SafetyTab';
@@ -20,7 +21,7 @@ import DataTab from '@/components/settings/DataTab';
 import ProposalsTab from '@/components/settings/ProposalsTab';
 import TradingPointer, { StockPointer } from '@/components/settings/TradingPointer';
 import { HealthChip, useHealth, type Report } from '@/components/settings/StatusChip';
-import { CheckIcon } from '@/components/Icons';
+import { CheckIcon, ChevronIcon } from '@/components/Icons';
 
 function Panel({ tab }: { tab: SettingsTabId }) {
   switch (tab) {
@@ -30,6 +31,8 @@ function Panel({ tab }: { tab: SettingsTabId }) {
       return <TargetingTab />;
     case 'writing':
       return <WritingTab />;
+    case 'ai':
+      return <AiTab />;
     case 'email':
       return <EmailTab />;
     case 'imap':
@@ -133,6 +136,12 @@ function SettingsView() {
   const current = SETTINGS_TABS.find((t) => t.id === tab);
   const label = current?.label ?? 'Settings';
   const report = health[tab];
+  const groupOfTab = SETTINGS_GROUPS.find((g) => g.tabs.some((t) => t.id === tab))?.label ?? SETTINGS_GROUPS[0].label;
+  const [openGroup, setOpenGroup] = useState<string>(groupOfTab);
+  // Following a link into another section opens that section.
+  useEffect(() => {
+    setOpenGroup(groupOfTab);
+  }, [groupOfTab]);
 
   // Older links use /settings#email: honour them once, then move to ?tab=.
   useEffect(() => {
@@ -154,41 +163,88 @@ function SettingsView() {
 
       <div className="grid gap-5 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
         <nav aria-label="Settings sections" className="min-w-0 lg:sticky lg:top-20">
-          <div className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:block lg:space-y-4 lg:overflow-visible lg:px-0 lg:pb-0">
+          {/* Phone: pick a section, then one of its few pages. */}
+          <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-2 lg:hidden">
             {SETTINGS_GROUPS.map((g) => (
-              <div key={g.label} className="flex shrink-0 items-center gap-1 lg:block">
-                <p className="hidden px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-fg-subtle lg:block">{g.label}</p>
-                <ul className="flex items-center gap-1 lg:block lg:space-y-0.5">
-                  {g.tabs.map((t) => {
-                    const on = t.id === tab;
-                    const h = health[t.id];
-                    return (
-                      <li key={t.id} className="shrink-0">
-                        <Link
-                          ref={on ? activeRef : undefined}
-                          href={settingsHref(t.id)}
-                          replace
-                          scroll={false}
-                          aria-current={on ? 'page' : undefined}
-                          className={cx(
-                            'ctl flex min-h-11 items-center justify-between gap-2 whitespace-nowrap rounded-ctl px-3 py-1.5 text-sm font-medium transition-colors duration-fast',
-                            on ? 'bg-primary-soft text-primary-text ring-1 ring-inset ring-primary-border' : 'text-fg-muted hover:bg-surface-2 hover:text-fg',
-                          )}
-                        >
-                          <span className="min-w-0">
-                            <span className="block">{t.label}</span>
-                            {h && h.health !== 'ready' && (
-                              <span className={cx('block max-w-[11rem] truncate text-xs font-normal', h.health === 'problem' ? 'text-danger' : 'text-warning')}>{h.label}</span>
-                            )}
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <span aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-border lg:hidden" />
-              </div>
+              <button
+                key={g.label}
+                type="button"
+                onClick={() => setOpenGroup(g.label)}
+                aria-pressed={openGroup === g.label}
+                className={cx(
+                  'ctl min-h-10 shrink-0 rounded-full border px-3.5 text-sm font-medium',
+                  openGroup === g.label ? 'border-primary-border bg-primary-soft text-primary-text' : 'border-border bg-surface text-fg-muted',
+                )}
+              >
+                {g.label}
+              </button>
             ))}
+          </div>
+          <div className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:hidden">
+            {SETTINGS_GROUPS.filter((g) => g.label === openGroup).flatMap((g) => g.tabs).map((t) => {
+              const on = t.id === tab;
+              return (
+                <Link
+                  key={t.id}
+                  ref={on ? activeRef : undefined}
+                  href={settingsHref(t.id)}
+                  replace
+                  scroll={false}
+                  aria-current={on ? 'page' : undefined}
+                  className={cx('ctl min-h-11 shrink-0 whitespace-nowrap rounded-ctl px-3 py-2 text-sm font-medium', on ? 'bg-primary-soft text-primary-text ring-1 ring-inset ring-primary-border' : 'text-fg-muted')}
+                >
+                  {t.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Computer: sections open one at a time so the list stays short. */}
+          <div className="hidden space-y-1 lg:block">
+            {SETTINGS_GROUPS.map((g) => {
+              const isOpen = openGroup === g.label;
+              const todo = g.tabs.filter((t) => health[t.id] && health[t.id]!.health !== 'ready').length;
+              return (
+                <div key={g.label}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenGroup(isOpen ? '' : g.label)}
+                    aria-expanded={isOpen}
+                    className="ctl flex min-h-11 w-full items-center gap-2 rounded-ctl px-3 text-left text-sm font-semibold text-fg hover:bg-surface-2"
+                  >
+                    <span className="flex-1">{g.label}</span>
+                    {todo > 0 && <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning">{todo} to do</span>}
+                    <ChevronIcon className={cx('h-4 w-4 text-fg-subtle transition-transform duration-base', !isOpen && '-rotate-90')} />
+                  </button>
+                  {isOpen && (
+                    <ul className="mb-2 mt-0.5 space-y-0.5 border-l border-border pl-2 ml-3">
+                      {g.tabs.map((t) => {
+                        const on = t.id === tab;
+                        const h = health[t.id];
+                        return (
+                          <li key={t.id}>
+                            <Link
+                              ref={on ? activeRef : undefined}
+                              href={settingsHref(t.id)}
+                              replace
+                              scroll={false}
+                              aria-current={on ? 'page' : undefined}
+                              className={cx(
+                                'ctl flex min-h-10 items-center rounded-ctl px-3 py-1.5 text-sm transition-colors duration-fast',
+                                on ? 'bg-primary-soft font-medium text-primary-text ring-1 ring-inset ring-primary-border' : 'text-fg-muted hover:bg-surface-2 hover:text-fg',
+                              )}
+                            >
+                              <span className="min-w-0 flex-1 truncate">{t.label}</span>
+                              {h && h.health !== 'ready' && <span aria-label={h.label} title={h.label} className={cx('ml-2 h-2 w-2 shrink-0 rounded-full', h.health === 'problem' ? 'bg-danger' : 'bg-warning')} />}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </nav>
 

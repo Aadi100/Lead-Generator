@@ -128,7 +128,7 @@ export function SystemCard({ raw, workerOnline }: { raw: DashRaw; workerOnline: 
     <Panel title="System status" subtitle="Is everything running?" href="/settings" linkLabel="Settings">
       <div className="space-y-1.5">
         <Line level={up ? 'ok' : 'bad'} name="Background helper" value={up ? 'Running' : 'Offline'} hint={up ? 'Checks, writes and sends for you' : 'Start it: run npm run worker'} />
-        <Line level={!up ? 'off' : claude ? 'ok' : 'warn'} name="AI writer" value={!up ? 'Unknown' : claude ? 'Ready' : 'Not found'} hint={claude ? 'Messages written with your Claude plan (Claude CLI)' : 'Messages use simple templates (Claude CLI not found)'} />
+        <Line level={!up ? 'off' : claude ? 'ok' : 'warn'} name="AI writer" value={!up ? 'Unknown' : claude ? 'Ready' : 'Needs a key'} hint={claude ? 'Messages are written by the AI you chose in Settings' : 'No AI key yet, so messages use simple templates (Settings > AI writer)'} />
         <Line level={n8nSeen ? (n8nOnline(raw) ? 'ok' : 'bad') : 'off'} name="Lead finders (n8n)" value={n8nSeen ? (n8nOnline(raw) ? 'Working' : 'Offline') : 'Not seen'} hint={raw.n8n.errors_total ? `${raw.n8n.errors_total} problem${raw.n8n.errors_total === 1 ? '' : 's'} so far` : undefined} />
         <Line
           level={sending.provider === 'none' ? 'warn' : sending.paused ? 'warn' : 'ok'}

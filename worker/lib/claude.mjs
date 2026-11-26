@@ -1,54 +1,36 @@
-import { spawn } from 'node:child_process';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-
-const BIN = process.env.CLAUDE_BIN || 'claude';
-const NEUTRAL_DIR = path.join(os.tmpdir(), 'lead-radar-claude');
-fs.mkdirSync(NEUTRAL_DIR, { recursive: true });
+import { getSetting } from './settings.mjs';
+import { callApi, PROVIDERS } from './ai-http.mjs';
 
 let chain = Promise.resolve();
 
-function exec(args, input, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(BIN, args, { cwd: NEUTRAL_DIR, windowsHide: true });
-    let out = '';
-    let err = '';
-    const timer = setTimeout(() => {
-      child.kill();
-      reject(new Error(`Claude CLI timed out after ${Math.round(timeoutMs / 1000)}s`));
-    }, timeoutMs);
-    child.stdout.on('data', (d) => (out += d));
-    child.stderr.on('data', (d) => (err += d));
-    child.on('error', (e) => {
-      clearTimeout(timer);
-      reject(new Error(`Claude CLI could not start: ${e.message}`));
-    });
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      if (code === 0) resolve(out.trim());
-      else reject(new Error(`Claude CLI exited with code ${code}: ${(err || out).trim().slice(-300)}`));
-    });
-    if (input) child.stdin.write(input);
-    child.stdin.end();
-  });
+// Which AI is used is chosen in Settings > AI writer. Every choice uses a key.
+async function chosen() {
+  const ai = await getSetting('ai');
+  const provider = PROVIDERS[ai.provider] ? ai.provider : 'gemini';
+  const cfg = ai[provider] || {};
+  return { provider, key: String(cfg.api_key || '').trim(), model: String(cfg.model || '').trim() };
 }
 
 export async function claudeStatus() {
   try {
-    const version = await exec(['--version'], '', 15000);
-    return { available: true, version: version.split('\n')[0], bin: BIN };
+    const c = await chosen();
+    return {
+      available: !!c.key,
+      version: `${PROVIDERS[c.provider].label} · ${c.model || PROVIDERS[c.provider].model}`,
+      bin: c.provider,
+      provider: c.provider,
+      error: c.key ? undefined : 'No key saved',
+    };
   } catch (e) {
-    return { available: false, version: null, bin: BIN, error: e.message };
+    return { available: false, version: null, bin: null, provider: null, error: e.message };
   }
 }
 
-// One call at a time so a burst of jobs cannot burn through the plan's rate limit.
+// One call at a time so a burst of jobs cannot use up the key's rate limit.
 export function runClaude(prompt, { system, timeoutMs = 180000 } = {}) {
-  const run = () => {
-    const args = ['-p', '--output-format', 'text', '--tools', '', '--no-session-persistence'];
-    if (system) args.push('--system-prompt', system);
-    return exec(args, prompt, timeoutMs);
+  const run = async () => {
+    const c = await chosen();
+    return callApi(c.provider, { key: c.key, model: c.model, system, prompt }, { timeoutMs });
   };
   const next = chain.then(run, run);
   chain = next.catch(() => {});

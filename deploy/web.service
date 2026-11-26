@@ -1,0 +1,31 @@
+# Website (the dashboard). Filled in by setup_vps.sh: @@APP_NAME@@ @@APP_USER@@ @@APP_DIR@@ @@PORT@@ @@NODE_BIN@@
+[Unit]
+Description=@@APP_NAME@@ dashboard (website)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@@APP_USER@@
+Group=@@APP_USER@@
+WorkingDirectory=@@APP_DIR@@
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+# PORT and HOST are the defaults. The same names inside .env win, so you can change them there.
+Environment=PORT=@@PORT@@
+Environment=HOST=127.0.0.1
+# The "touch" makes sure .env exists, so the service never fails just because the file is missing.
+ExecStartPre=/usr/bin/touch @@APP_DIR@@/.env
+EnvironmentFile=-@@APP_DIR@@/.env
+ExecStart=@@NODE_BIN@@ @@APP_DIR@@/node_modules/next/dist/bin/next start -p ${PORT} -H ${HOST}
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+LimitNOFILE=65535
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+SyslogIdentifier=@@APP_NAME@@-web
+
+[Install]
+WantedBy=multi-user.target

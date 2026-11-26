@@ -18,7 +18,7 @@ function Explain({ worker }: { worker: WorkerInfo }) {
       ) : worker.online ? (
         <>
           <p className="font-semibold text-fg">The background helper is running.</p>
-          <p className="mt-1">{worker.claude ? 'It sends email, reads replies and the AI writer can draft messages.' : 'The AI writer was not found, so messages are written from simple templates. (Technical: the Claude command line is missing.)'}</p>
+          <p className="mt-1">{worker.claude ? 'It sends email, reads replies and the AI writer can draft messages.' : 'No AI key is saved yet, so messages are written from simple templates. Add one in Settings > AI writer.'}</p>
         </>
       ) : (
         <>

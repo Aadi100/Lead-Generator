@@ -36,6 +36,8 @@ export type NavItem = {
   description: string;
   /** Extra words the palette matches on. */
   keywords?: string;
+  /** Shorter wording for the tab bar inside an area (defaults to label). */
+  tabLabel?: string;
   badge?: BadgeKey;
   /** Match only this exact path (use for '/' and '/trading'). */
   exact?: boolean;
@@ -64,7 +66,7 @@ export const NAV_GROUPS: NavGroup[] = [
     collapsible: false,
     items: [
       { id: 'dashboard', label: 'Dashboard', href: '/', icon: DashboardIcon, description: 'Today: what needs you', keywords: 'home overview today', exact: true },
-      { id: 'leads', label: 'Leads', href: '/leads', icon: LeadsIcon, description: 'People asking for work, prospects and trade leads', keywords: 'people asking prospects inbox' },
+      { id: 'leads', label: 'Leads', tabLabel: 'All leads', href: '/leads', icon: LeadsIcon, description: 'People asking for work, prospects and trade leads', keywords: 'people asking prospects inbox' },
       { id: 'outbox', label: 'Outbox', href: '/outbox', icon: SendIcon, description: 'Drafts to review, sent mail and replies', keywords: 'email drafts replies send pitch', badge: 'outbox' },
       { id: 'pipeline', label: 'Pipeline', href: '/pipeline', icon: PipelineIcon, description: 'Leads and deals by stage', keywords: 'kanban board stages funnel' },
       { id: 'tasks', label: 'Tasks', href: '/tasks', icon: TasksIcon, description: 'Follow-ups and to-dos', keywords: 'todo reminders due', badge: 'tasks' },
@@ -101,8 +103,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Insights',
     collapsible: true,
     items: [
-      { id: 'analytics', label: 'Analytics', href: '/analytics', icon: AnalyticsIcon, description: 'Funnel, sources and what is working', keywords: 'insights stats charts conversion' },
-      { id: 'activity', label: 'Activity', href: '/activity', icon: ActivityIcon, description: 'Everything that happened, newest first', keywords: 'log history feed timeline' },
+      { id: 'analytics', label: 'Analytics', tabLabel: 'What is working', href: '/analytics', icon: AnalyticsIcon, description: 'Funnel, sources and what is working', keywords: 'insights stats charts conversion' },
+      { id: 'activity', label: 'Activity', tabLabel: 'What happened', href: '/activity', icon: ActivityIcon, description: 'Everything that happened, newest first', keywords: 'log history feed timeline' },
     ],
   },
   {
@@ -111,8 +113,8 @@ export const NAV_GROUPS: NavGroup[] = [
     collapsible: false,
     quiet: true,
     items: [
-      { id: 'sources', label: 'Sources', href: '/sources', icon: SourcesIcon, description: 'Where leads come from and whether each finder works', keywords: 'lead finders scrapers reddit freelancer keys connections' },
-      { id: 'capture', label: 'Capture', href: '/capture', icon: CaptureIcon, description: 'Save leads from any page you are viewing', keywords: 'bookmarklet paste add lead' },
+      { id: 'sources', label: 'Sources', tabLabel: 'Where leads come from', href: '/sources', icon: SourcesIcon, description: 'Where leads come from and whether each finder works', keywords: 'lead finders scrapers reddit freelancer keys connections' },
+      { id: 'capture', label: 'Capture', tabLabel: 'Add from a page', href: '/capture', icon: CaptureIcon, description: 'Save leads from any page you are viewing', keywords: 'bookmarklet paste add lead' },
       { id: 'help', label: 'Help', href: '/help', icon: HelpIcon, description: 'How things work and what to do first', keywords: 'docs guide support shortcuts' },
       { id: 'settings', label: 'Settings', href: '/settings', icon: SettingsIcon, description: 'Profile, email, alerts, safety and more', keywords: 'preferences account smtp' },
     ],
@@ -121,8 +123,55 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export const ALL_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
-/** The four modules on the phone tab bar. A fifth "More" tab opens a sheet with everything else. */
-export const MOBILE_PRIMARY_IDS = ['dashboard', 'leads', 'outbox', 'pipeline'] as const;
+/**
+ * What the person sees in the menu: a few clear areas. Each area holds one or more pages (shown as tabs inside the area).
+ * Nothing is hidden, the 17 pages are just grouped so the menu stays small.
+ */
+export type NavArea = {
+  id: string;
+  label: string;
+  /** One short line, used on phone and in tooltips. */
+  hint: string;
+  href: string;
+  icon: IconComp;
+  accent?: boolean;
+  /** Item ids (from NAV_GROUPS) that live in this area, in tab order. */
+  itemIds: string[];
+  /** Counters added together for the badge. */
+  badges?: BadgeKey[];
+  /** Pinned to the bottom of the sidebar. */
+  bottom?: boolean;
+};
+
+export const NAV_AREAS: NavArea[] = [
+  { id: 'home', label: 'Home', hint: 'What needs you today', href: '/', icon: DashboardIcon, itemIds: ['dashboard'] },
+  { id: 'leads', label: 'Leads', hint: 'People who may want your work', href: '/leads', icon: LeadsIcon, itemIds: ['leads', 'capture', 'sources'] },
+  { id: 'messages', label: 'Messages', hint: 'Drafts, sent mail and replies', href: '/outbox', icon: SendIcon, itemIds: ['outbox'], badges: ['outbox'] },
+  { id: 'work', label: 'My work', hint: 'Deals, tasks, clients and quotes', href: '/pipeline', icon: PipelineIcon, itemIds: ['pipeline', 'deals', 'tasks', 'contacts', 'proposals'], badges: ['tasks'] },
+  { id: 'trading', label: 'Game trading', hint: 'Buyers, sellers, prices and stock', href: '/trading', icon: TradingIcon, accent: true, itemIds: ['trading', 'buyers', 'sellers', 'market', 'stock', 'catalog'], badges: ['buyers', 'sellers'] },
+  { id: 'reports', label: 'Reports', hint: 'What is working, and what happened', href: '/analytics', icon: AnalyticsIcon, itemIds: ['analytics', 'activity'] },
+  { id: 'help', label: 'Help', hint: 'How things work', href: '/help', icon: HelpIcon, itemIds: ['help'], bottom: true },
+  { id: 'settings', label: 'Settings', hint: 'Profile, email, alerts and safety', href: '/settings', icon: SettingsIcon, itemIds: ['settings'], bottom: true },
+];
+
+/** The four areas on the phone tab bar. A fifth "More" tab opens a sheet with the rest. */
+export const MOBILE_PRIMARY_IDS = ['home', 'leads', 'messages', 'work'] as const;
+
+export function areaOfItem(itemId: string): NavArea | undefined {
+  return NAV_AREAS.find((a) => a.itemIds.includes(itemId));
+}
+
+export function areaFor(pathname: string): NavArea | undefined {
+  const item = activeItemFor(pathname);
+  return item ? areaOfItem(item.id) : undefined;
+}
+
+/** Pages shown as tabs for the area of this path (empty when the area has only one page). */
+export function tabsFor(pathname: string): NavItem[] {
+  const area = areaFor(pathname);
+  if (!area || area.itemIds.length < 2) return [];
+  return area.itemIds.map((id) => ALL_ITEMS.find((i) => i.id === id)).filter((i): i is NavItem => !!i);
+}
 
 export function groupOf(itemId: string): NavGroup | undefined {
   return NAV_GROUPS.find((g) => g.items.some((i) => i.id === itemId));

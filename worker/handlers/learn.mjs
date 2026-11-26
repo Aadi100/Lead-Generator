@@ -27,7 +27,7 @@ export async function learnWriting() {
   const current = await getSetting('writing_rules');
   const events = await eventsSince(current.last_learned_at);
   if (!events.length) return { changed: false, notes: ['Nothing new to learn from yet. Edit or rate a few drafts first.'] };
-  if (!(await claudeStatus()).available) return { changed: false, notes: ['The Claude command line tool is not available, so nothing was learned.'] };
+  if (!(await claudeStatus()).available) return { changed: false, notes: ['No AI key is saved (Settings > AI writer), so nothing was learned.'] };
 
   const summary = summarizeEvents(events);
   const prompt = buildLearningPrompt({ rules: current.markdown || '', summary });

@@ -182,6 +182,7 @@ export type JobType =
   | 'test_email'
   | 'test_imap'
   | 'test_alert'
+  | 'ai_test'
   | 'push_test'
   | 'check_replies'
   | 'prospect_local'
@@ -415,11 +416,20 @@ export type IntegrationsSettings = {
   status: Partial<Record<IntegrationName, IntegrationStatus>>;
 };
 
+export type AiProvider = 'anthropic' | 'gemini' | 'deepseek';
+export type AiKeyProvider = AiProvider;
+export type AiSettings = {
+  provider: AiProvider;
+  anthropic: { api_key: string; model: string };
+  gemini: { api_key: string; model: string };
+  deepseek: { api_key: string; model: string };
+};
+
 export type WorkerStatus = {
   last_seen: string | null;
   started_at: string | null;
   pid: number | null;
-  claude: { available: boolean; version: string | null; bin: string | null };
+  claude: { available: boolean; version: string | null; bin: string | null; provider?: string | null };
   handlers: string[];
   jobs: string[];
 };
@@ -433,6 +443,7 @@ export type SettingsMap = {
   imap: ImapSettings;
   imap_state: ImapState;
   alerts: AlertSettings;
+  ai: AiSettings;
   prospecting: ProspectingSettings;
   targeting: TargetingSettings;
   trading: TradingSettings;

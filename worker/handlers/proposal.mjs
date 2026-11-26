@@ -34,7 +34,7 @@ export async function summarize(payload) {
   ].filter((l) => l !== '').join('\n');
 
   const status = await claudeStatus();
-  if (!status.available) throw new Error('The AI helper is not available on this computer. Write the summary yourself, or install and sign in to the Claude CLI.');
+  if (!status.available) throw new Error('No AI key is saved. Write the summary yourself, or add a key in Settings > AI writer.');
   const text = clip(await runClaude(prompt, { system: SYSTEM, timeoutMs: 120000 }), 900);
   if (!text) throw new Error('The AI returned nothing. Try again.');
   return { summary: text };

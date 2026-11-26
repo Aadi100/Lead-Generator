@@ -4,6 +4,7 @@ export type SettingsTabId =
   | 'profile'
   | 'targeting'
   | 'writing'
+  | 'ai'
   | 'email'
   | 'imap'
   | 'safety'
@@ -24,6 +25,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     tabs: [
       { id: 'profile', label: 'Profile & links', blurb: 'Tell me what you sell and where to find your work, so every message sounds like you.' },
       { id: 'writing', label: 'Writing rules', blurb: 'Set the tone and rules the AI writer follows when it drafts messages for you.' },
+      { id: 'ai', label: 'AI writer', blurb: 'Choose which AI writes your messages (Gemini, DeepSeek or Claude) and paste its key. You can switch any time.' },
       { id: 'proposals', label: 'Proposals & quotes', blurb: 'Choose how your proposals and quotes look and what they say by default.' },
     ],
   },
